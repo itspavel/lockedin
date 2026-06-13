@@ -4,7 +4,7 @@ import SwiftUI
 /// Dragging is a gesture passed up to the window controller (so button taps still work).
 struct DesktopWidgetView: View {
     @ObservedObject var tracker: Tracker
-    var onDrag: (CGSize) -> Void = { _ in }
+    var onDrag: () -> Void = {}
     var onDragEnd: () -> Void = {}
 
     private var size: WidgetSize { tracker.widgetSize }
@@ -16,8 +16,11 @@ struct DesktopWidgetView: View {
         .frame(width: size.width)
         .contentShape(Rectangle())
         .gesture(
-            DragGesture(minimumDistance: 6, coordinateSpace: .local)
-                .onChanged { onDrag($0.translation) }
+            // We ignore the translation and let the controller move the window using the
+            // absolute mouse position — translation is measured in a frame that moves with
+            // the window, which feeds back and lags (worse on larger sizes).
+            DragGesture(minimumDistance: 6, coordinateSpace: .global)
+                .onChanged { _ in onDrag() }
                 .onEnded { _ in onDragEnd() }
         )
     }
@@ -53,6 +56,24 @@ struct DesktopWidgetView: View {
                     projectRow(p.name, p.time.total)
                 }
             }
+            if size == .xlarge {
+                Divider().opacity(0.4)
+                ForEach(tracker.sortedProjects.prefix(5), id: \.name) { p in
+                    projectRow(p.name, p.time.total)
+                }
+                if !tracker.activeSessions.isEmpty {
+                    Divider().opacity(0.4)
+                    ForEach(Array(tracker.activeSessions.enumerated()), id: \.offset) { _, s in
+                        HStack(spacing: 6) {
+                            Circle().fill(.green).frame(width: 5, height: 5)
+                            Text(s.projectName).lineLimit(1).truncationMode(.middle)
+                            Spacer()
+                            Text("running").foregroundStyle(.tertiary)
+                        }.font(.caption2)
+                    }
+                }
+                statsStrip(d)
+            }
 
             footer(d)
         }
@@ -65,6 +86,21 @@ struct DesktopWidgetView: View {
             Spacer()
             Text(time.hoursCompact).font(.callout.weight(.bold)).monospacedDigit()
         }
+    }
+
+    /// XL-only stats row: streak, prompts, keystrokes — the "dashboard" extras.
+    private func statsStrip(_ d: DayLog) -> some View {
+        HStack(spacing: 14) {
+            if tracker.streak > 0 {
+                Label("\(tracker.streak)d", systemImage: "flame")
+            }
+            Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
+            if tracker.editorKeystrokes > 0 {
+                Label("\(tracker.editorKeystrokes)", systemImage: "keyboard").help("chars typed")
+            }
+        }
+        .font(.caption2).foregroundStyle(.secondary)
+        .padding(.top, 2)
     }
 
     @ViewBuilder private func footer(_ d: DayLog) -> some View {

@@ -15,7 +15,8 @@ final class WidgetWindowController {
     private let posKey = "widget.frameOrigin"
     private let visKey = "widget.visible"
     private var cancellables = Set<AnyCancellable>()
-    private var dragOrigin: NSPoint?
+    private var dragStartMouse: NSPoint?
+    private var dragStartOrigin: NSPoint?
 
     init(tracker: Tracker) {
         self.tracker = tracker
@@ -60,7 +61,7 @@ final class WidgetWindowController {
 
         let root = DesktopWidgetView(
             tracker: tracker,
-            onDrag: { [weak self] t in self?.drag(by: t) },
+            onDrag: { [weak self] in self?.drag() },
             onDragEnd: { [weak self] in self?.endDrag() }
         )
         let host = NSHostingView(rootView: root)
@@ -96,14 +97,16 @@ final class WidgetWindowController {
 
     // MARK: - Drag (gesture-driven)
 
-    private func drag(by translation: CGSize) {
-        if dragOrigin == nil { dragOrigin = panel.frame.origin }
-        guard let o = dragOrigin else { return }
-        // SwiftUI y grows downward; AppKit grows upward → subtract height.
-        panel.setFrameOrigin(NSPoint(x: o.x + translation.width, y: o.y - translation.height))
+    /// Move the window by tracking the absolute screen mouse position. Stable because the
+    /// reference (NSEvent.mouseLocation) doesn't move with the window — no feedback, no lag.
+    private func drag() {
+        let mouse = NSEvent.mouseLocation
+        if dragStartMouse == nil { dragStartMouse = mouse; dragStartOrigin = panel.frame.origin }
+        guard let sm = dragStartMouse, let so = dragStartOrigin else { return }
+        panel.setFrameOrigin(NSPoint(x: so.x + (mouse.x - sm.x), y: so.y + (mouse.y - sm.y)))
     }
 
-    private func endDrag() { dragOrigin = nil; savePosition() }
+    private func endDrag() { dragStartMouse = nil; dragStartOrigin = nil; savePosition() }
 
     // MARK: - Level / visibility
 
