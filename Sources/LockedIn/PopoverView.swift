@@ -73,6 +73,10 @@ private struct PassiveView: View {
                 Button { showShareSheet = true } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
+                if tracker.editorConnected {
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .foregroundStyle(.green).help("Editor sensor connected")
+                }
                 Spacer()
                 if tracker.streak > 0 {
                     Label("\(tracker.streak)-day streak", systemImage: "flame")
@@ -145,17 +149,39 @@ private struct AgentRunningRow: View {
 
 private struct LockInButton: View {
     @ObservedObject var tracker: Tracker
+    @State private var minutes = 45
+    private let options = [25, 45, 60, 90]
+
     var body: some View {
-        Menu {
-            ForEach([25, 45, 60, 90], id: \.self) { m in
-                Button("\(m) min") { tracker.startLock(minutes: m, project: tracker.currentProject) }
+        VStack(spacing: 8) {
+            // Duration pills — tap to choose, selected one is filled.
+            HStack(spacing: 6) {
+                ForEach(options, id: \.self) { m in
+                    Text("\(m)m")
+                        .font(.caption.weight(.semibold)).monospacedDigit()
+                        .padding(.vertical, 4).frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 7)
+                                .fill(m == minutes ? Color.primary.opacity(0.12) : .clear)
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 7)
+                                .strokeBorder(Color.primary.opacity(m == minutes ? 0.4 : 0.15), lineWidth: 1)
+                        )
+                        .contentShape(Rectangle())
+                        .onTapGesture { minutes = m }
+                }
             }
-        } label: {
-            Label("Lock In", systemImage: "lock.fill").frame(maxWidth: .infinity)
+
+            Button { tracker.startLock(minutes: minutes, project: tracker.currentProject) } label: {
+                Label("Lock In · \(minutes) min", systemImage: "lock.fill")
+                    .font(.callout.weight(.bold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 9)
+            }
+            .buttonStyle(.plain)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary))
+            .foregroundStyle(Color(nsColor: .windowBackgroundColor))
         }
-        .menuStyle(.borderlessButton)
-        .controlSize(.large)
-        .padding(.vertical, 9)
-        .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Color.primary, lineWidth: 2))
     }
 }

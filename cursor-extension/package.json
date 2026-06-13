@@ -1,0 +1,23 @@
+{
+  "name": "lockedin-sensor",
+  "displayName": "LockedIn Sensor",
+  "description": "Feeds precise project, edit-activity, and keystroke signal to the LockedIn time tracker.",
+  "version": "0.1.0",
+  "publisher": "lockedin",
+  "engines": { "vscode": "^1.75.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "LockedIn",
+      "properties": {
+        "lockedin.idleSeconds": {
+          "type": "number",
+          "default": 120,
+          "description": "Seconds without an edit before you're considered idle in this editor."
+        }
+      }
+    }
+  }
+}

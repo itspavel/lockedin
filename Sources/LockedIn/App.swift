@@ -5,6 +5,15 @@ import AppKit
 struct LockedInApp {
     static func main() {
         let app = NSApplication.shared
+
+        // Preview/render mode: `LockedIn --render <dir>` dumps UI PNGs and exits.
+        if let i = CommandLine.arguments.firstIndex(of: "--render"),
+           i + 1 < CommandLine.arguments.count {
+            app.setActivationPolicy(.prohibited)
+            MainActor.assumeIsolated { Preview.render(to: CommandLine.arguments[i + 1]) }
+            return
+        }
+
         let delegate = AppDelegate()
         app.delegate = delegate
         app.setActivationPolicy(.accessory)   // no Dock icon, menu bar only

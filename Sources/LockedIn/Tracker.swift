@@ -16,6 +16,7 @@ final class Tracker: ObservableObject {
     @Published private(set) var currentProject: String?
     @Published private(set) var streak = 0
     @Published private(set) var lockSession: LockSession?
+    @Published private(set) var editorConnected = false
 
     private let store = Store()
     private let agents = AgentMonitor()
@@ -62,17 +63,25 @@ final class Tracker: ObservableObject {
 
         let human = HumanMonitor.sample()
         let (active, recent) = agents.scan()
-        humanActiveNow = human.isActive
+        let beat = EditorMonitor.read()
+        editorConnected = beat != nil
+
+        // The editor extension, when present, is the most trustworthy human signal:
+        // it knows the exact project and whether you're actively editing.
+        let editorEditing = (beat?.editing ?? false)
+        let editorProject = beat.flatMap(EditorMonitor.project)
+        humanActiveNow = editorEditing || human.isActive
         activeAgents = active
 
-        // Attribute the elapsed interval.
-        if human.isActive {
+        if humanActiveNow {
             // Project priority for human time, all zero-permission:
-            //  1. a live agent's project (strongest signal you're on it),
-            //  2. the most recently touched Claude project (you bounce editor<->agent),
-            //  3. the last project we attributed to (sticky within a session),
-            //  4. the frontmost app name as a last resort so time is never lost.
-            let proj = active.first?.projectName
+            //  1. the editor extension's exact project (knows precisely),
+            //  2. a live agent's project,
+            //  3. the most recently touched Claude project (you bounce editor<->agent),
+            //  4. the last project we attributed to (sticky within a session),
+            //  5. the frontmost app name as a last resort so time is never lost.
+            let proj = editorProject
+                ?? active.first?.projectName
                 ?? recent.first?.name
                 ?? currentProject
                 ?? human.frontmostApp
@@ -115,6 +124,18 @@ final class Tracker: ObservableObject {
     // MARK: - Derived for UI / share card
 
     func lifetime(of project: String) -> TimeInterval { store.lifetimeTotal(project: project) }
+
+    /// Populate believable numbers for preview/screenshot when no real data exists.
+    func seedSample() {
+        today.projects = [
+            "myapp-widget": ProjectTime(human: 1.8 * 3600, agent: 3.4 * 3600),
+            "client-dashboard": ProjectTime(human: 1.1 * 3600, agent: 0.5 * 3600),
+            "experiments": ProjectTime(human: 0.4 * 3600, agent: 0.1 * 3600),
+        ]
+        today.prompts = 47
+        streak = 9
+        currentProject = "myapp-widget"
+    }
 
     var sortedProjects: [(name: String, time: ProjectTime)] {
         today.projects
