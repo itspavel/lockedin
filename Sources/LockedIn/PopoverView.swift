@@ -71,7 +71,10 @@ private struct PassiveView: View {
 
             LockInButton(tracker: tracker)
 
-            HStack(spacing: 14) {
+            Divider().padding(.vertical, 2)
+
+            // Row 1 — primary actions + status.
+            HStack(spacing: 12) {
                 Button { showShareSheet = true } label: {
                     Label("Share", systemImage: "square.and.arrow.up")
                 }
@@ -79,30 +82,44 @@ private struct PassiveView: View {
                     Image(systemName: "bolt.horizontal.circle.fill")
                         .foregroundStyle(.green).help("Editor sensor connected")
                 }
+                Spacer()
+                if tracker.streak > 0 {
+                    Label("\(tracker.streak)d", systemImage: "flame")
+                        .font(.caption).foregroundStyle(.secondary)
+                        .help("\(tracker.streak)-day streak")
+                }
+                Button { NSApp.terminate(nil) } label: {
+                    Image(systemName: "power")
+                }.foregroundStyle(.secondary).help("Quit LockedIn")
+            }
+            .buttonStyle(.plain)
+
+            // Row 2 — desktop widget controls.
+            HStack(spacing: 12) {
+                Text("Widget").font(.caption).foregroundStyle(.secondary)
                 Button(action: onToggleWidget) {
                     Image(systemName: "macwindow.on.rectangle")
                 }.help("Show/hide desktop widget")
                 Button { tracker.toggleWidgetPin() } label: {
                     Image(systemName: tracker.widgetPinned ? "pin.fill" : "pin")
                         .foregroundStyle(tracker.widgetPinned ? Color.accentColor : .primary)
-                }.help(tracker.widgetPinned ? "Widget pinned above apps" : "Widget on desktop")
-                ForEach(WidgetSize.allCases) { s in
-                    Button { tracker.setWidgetSize(s) } label: {
-                        Text(s.label).font(.caption2.weight(.bold))
-                            .foregroundStyle(tracker.widgetSize == s ? Color.accentColor : .secondary)
-                    }.help("Widget size \(s.label)")
-                }
+                }.help(tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps")
                 Spacer()
-                if tracker.streak > 0 {
-                    Label("\(tracker.streak)-day streak", systemImage: "flame")
-                        .font(.caption).foregroundStyle(.secondary)
+                // S / M / L segmented size picker.
+                HStack(spacing: 0) {
+                    ForEach(WidgetSize.allCases) { s in
+                        Button { tracker.setWidgetSize(s) } label: {
+                            Text(s.label).font(.caption.weight(.bold))
+                                .frame(width: 30, height: 22)
+                                .background(tracker.widgetSize == s ? Color.primary.opacity(0.12) : .clear)
+                                .foregroundStyle(tracker.widgetSize == s ? Color.primary : .secondary)
+                        }.help("Widget size \(s.label)")
+                    }
                 }
-                Button { NSApp.terminate(nil) } label: {
-                    Image(systemName: "power")
-                }.buttonStyle(.plain).foregroundStyle(.secondary)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
+                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.secondary.opacity(0.3), lineWidth: 1))
             }
             .buttonStyle(.plain)
-            .padding(.top, 2)
         }
     }
 }
