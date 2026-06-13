@@ -75,14 +75,11 @@ final class WidgetWindowController {
         }
     }
 
-    /// Pinned → floats above all windows. Unpinned → sits on the desktop, behind apps.
+    /// Pinned → floats above all windows. Unpinned → normal level: stays behind whatever
+    /// app you're using (it never activates/raises), but is still fully clickable and
+    /// draggable. The true "desktop" window level routes clicks to Finder, so we avoid it.
     private func applyLevel(pinned: Bool) {
-        if pinned {
-            panel.level = .floating
-        } else {
-            // Just above the desktop/wallpaper but below normal app windows.
-            panel.level = NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
-        }
+        panel.level = pinned ? .floating : .normal
     }
 
     var isVisible: Bool { panel.isVisible }
