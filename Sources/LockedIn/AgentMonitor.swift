@@ -23,6 +23,15 @@ final class AgentMonitor {
         let projectPath: String      // absolute path of the project the agent works in
         let projectName: String      // last path component, shown in UI
         let sessionFile: URL
+        var agentCount: Int = 1      // how many parallel sessions in this project
+    }
+
+    /// One live agent session (one fresh .jsonl). Multiple can share a project.
+    struct AgentSession {
+        let projectName: String
+        let projectPath: String
+        let sessionId: String        // session file stem, short id for the expanded list
+        let ageSeconds: TimeInterval
     }
 
     /// A project touched recently, with how long ago. Used to attribute human-only time.
@@ -32,12 +41,14 @@ final class AgentMonitor {
         let ageSeconds: TimeInterval
     }
 
-    /// One directory scan → (live agents, recently-touched projects sorted newest-first).
-    /// Both callers share this so we walk `~/.claude/projects` only once per tick.
-    func scan() -> (active: [ActiveAgent], recent: [RecentProject]) {
+    /// One directory scan → (per-project active agents with counts, every live session,
+    /// recently-touched projects). Both callers share this so we walk the dir once per tick.
+    /// Sessions are NOT deduped: N parallel agents in one project = N sessions, so their
+    /// time accrues combined (the share-card stat reflects total agent work, not wall clock).
+    func scan() -> (active: [ActiveAgent], sessions: [AgentSession], recent: [RecentProject]) {
         let fm = FileManager.default
-        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return ([], []) }
-        var active: [String: ActiveAgent] = [:]
+        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return ([], [], []) }
+        var sessions: [AgentSession] = []
         var recent: [String: TimeInterval] = [:]   // cwd -> freshest age
         let now = Date()
 
@@ -53,14 +64,30 @@ final class AgentMonitor {
                 let name = Self.displayName(for: cwd)
                 if age < (recent[cwd] ?? .infinity) { recent[cwd] = age }
                 if age < Self.activeWindow {
-                    active[cwd] = ActiveAgent(projectPath: cwd, projectName: name, sessionFile: f)
+                    sessions.append(AgentSession(projectName: name, projectPath: cwd,
+                                                 sessionId: f.deletingPathExtension().lastPathComponent,
+                                                 ageSeconds: age))
                 }
             }
         }
+
+        // Group sessions into one ActiveAgent per project, carrying the parallel count.
+        var byProject: [String: ActiveAgent] = [:]
+        for s in sessions {
+            if var a = byProject[s.projectPath] {
+                a.agentCount += 1
+                byProject[s.projectPath] = a
+            } else {
+                byProject[s.projectPath] = ActiveAgent(
+                    projectPath: s.projectPath, projectName: s.projectName,
+                    sessionFile: URL(fileURLWithPath: s.projectPath), agentCount: 1)
+            }
+        }
+
         let recentList = recent
             .map { RecentProject(path: $0.key, name: Self.displayName(for: $0.key), ageSeconds: $0.value) }
             .sorted { $0.ageSeconds < $1.ageSeconds }
-        return (Array(active.values), recentList)
+        return (Array(byProject.values), sessions.sorted { $0.ageSeconds < $1.ageSeconds }, recentList)
     }
 
     init() {

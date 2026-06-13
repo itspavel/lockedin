@@ -13,14 +13,32 @@ final class Tracker: ObservableObject {
     @Published private(set) var today: DayLog
     @Published private(set) var humanActiveNow = false
     @Published private(set) var activeAgents: [AgentMonitor.ActiveAgent] = []
+    @Published private(set) var activeSessions: [AgentMonitor.AgentSession] = []
     @Published private(set) var currentProject: String?
     @Published private(set) var streak = 0
-    @Published private(set) var lockSession: LockSession?
     @Published private(set) var editorConnected = false
+
+    // Lock In (focus) state — timer-driven so the countdown is smooth and pausable.
+    @Published private(set) var lockActive = false
+    @Published private(set) var lockPaused = false
+    @Published private(set) var lockProject: String?
+    @Published private(set) var lockRemaining: TimeInterval = 0
+    private var lockTotal: TimeInterval = 0
+
+    /// Total active agents across all projects right now.
+    var totalAgentCount: Int { activeSessions.count }
+
+    /// Desktop widget pinned above all windows (true) vs sitting on the desktop (false).
+    @Published var widgetPinned: Bool = UserDefaults.standard.bool(forKey: "widget.pinned")
+    func toggleWidgetPin() {
+        widgetPinned.toggle()
+        UserDefaults.standard.set(widgetPinned, forKey: "widget.pinned")
+    }
 
     private let store = Store()
     private let agents = AgentMonitor()
     private var timer: Timer?
+    private var displayTimer: Timer?     // 1s tick: smooth countdown + UI refresh while locked
     private var dayKey: String
 
     init() {
@@ -43,9 +61,15 @@ final class Tracker: ObservableObject {
     // MARK: - Lock In
 
     func startLock(minutes: Int, project: String?) {
-        lockSession = LockSession(project: project ?? currentProject,
-                                  start: Date(), duration: TimeInterval(minutes * 60))
+        lockProject = project ?? currentProject
+        lockTotal = TimeInterval(minutes * 60)
+        lockRemaining = lockTotal
+        lockPaused = false
+        lockActive = true
+        startDisplayTimer()
     }
+
+    func togglePauseLock() { lockPaused.toggle(); objectWillChange.send() }
 
     func endLock(completed: Bool) {
         if completed {
@@ -53,7 +77,34 @@ final class Tracker: ObservableObject {
             store.save(today)
             notify(title: "Session complete", body: "Nice. That's one in the books.")
         }
-        lockSession = nil
+        lockActive = false
+        lockPaused = false
+        lockRemaining = 0
+        stopDisplayTimer()
+        objectWillChange.send()
+    }
+
+    /// 1-second timer: decrements the countdown smoothly and refreshes the UI/menu bar
+    /// while a focus session runs. Separate from the 5s tracking tick so the timer is
+    /// smooth without sampling the monitors every second.
+    private func startDisplayTimer() {
+        stopDisplayTimer()
+        let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.displayTick() }
+        }
+        RunLoop.main.add(t, forMode: .common)
+        displayTimer = t
+    }
+
+    private func stopDisplayTimer() { displayTimer?.invalidate(); displayTimer = nil }
+
+    private func displayTick() {
+        guard lockActive else { return }
+        if !lockPaused {
+            lockRemaining = max(0, lockRemaining - 1)
+            if lockRemaining <= 0 { endLock(completed: true); return }
+        }
+        objectWillChange.send()
     }
 
     // MARK: - Tick
@@ -62,7 +113,7 @@ final class Tracker: ObservableObject {
         rolloverIfNeeded()
 
         let human = HumanMonitor.sample()
-        let (active, recent) = agents.scan()
+        let (active, sessions, recent) = agents.scan()
         let beat = EditorMonitor.read()
         editorConnected = beat != nil
 
@@ -72,6 +123,7 @@ final class Tracker: ObservableObject {
         let editorProject = beat.flatMap(EditorMonitor.project)
         humanActiveNow = editorEditing || human.isActive
         activeAgents = active
+        activeSessions = sessions
 
         if humanActiveNow {
             // Project priority for human time, all zero-permission:
@@ -90,8 +142,11 @@ final class Tracker: ObservableObject {
             today.projects[proj, default: ProjectTime()].human += Self.interval
         }
 
+        // Combined agent time: each parallel session contributes a full interval, so a
+        // project with 2 agents accrues 2× — total agent work, not wall-clock.
         for agent in active {
-            today.projects[agent.projectName, default: ProjectTime()].agent += Self.interval
+            today.projects[agent.projectName, default: ProjectTime()].agent
+                += Self.interval * TimeInterval(agent.agentCount)
             if currentProject == nil { currentProject = agent.projectName }
         }
 
@@ -100,11 +155,6 @@ final class Tracker: ObservableObject {
 
         if human.isActive || !active.isEmpty {
             store.save(today)
-        }
-
-        // Lock session expiry.
-        if let s = lockSession, s.isOver {
-            endLock(completed: true)
         }
 
         objectWillChange.send()

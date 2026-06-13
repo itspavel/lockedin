@@ -3,14 +3,15 @@ import SwiftUI
 /// The popover that drops from the menu bar. Two states: passive mirror, and locked-in.
 struct PopoverView: View {
     @ObservedObject var tracker: Tracker
+    var onToggleWidget: () -> Void = {}
     @State private var showShareSheet = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if let lock = tracker.lockSession {
-                LockedInView(tracker: tracker, lock: lock)
+            if tracker.lockActive {
+                LockedInView(tracker: tracker)
             } else {
-                PassiveView(tracker: tracker, showShareSheet: $showShareSheet)
+                PassiveView(tracker: tracker, showShareSheet: $showShareSheet, onToggleWidget: onToggleWidget)
             }
         }
         .padding(18)
@@ -24,6 +25,7 @@ struct PopoverView: View {
 private struct PassiveView: View {
     @ObservedObject var tracker: Tracker
     @Binding var showShareSheet: Bool
+    var onToggleWidget: () -> Void = {}
 
     var body: some View {
         let d = tracker.today
@@ -60,8 +62,8 @@ private struct PassiveView: View {
                 }
             }
 
-            if let agent = tracker.activeAgents.first {
-                AgentRunningRow(name: agent.projectName, count: tracker.activeAgents.count)
+            if !tracker.activeSessions.isEmpty {
+                AgentRunningRow(tracker: tracker)
             } else if d.total == 0 {
                 Text("Open Cursor or Claude Code and this fills itself. Nothing to start.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -77,6 +79,13 @@ private struct PassiveView: View {
                     Image(systemName: "bolt.horizontal.circle.fill")
                         .foregroundStyle(.green).help("Editor sensor connected")
                 }
+                Button(action: onToggleWidget) {
+                    Image(systemName: "macwindow.on.rectangle")
+                }.help("Show/hide desktop widget")
+                Button { tracker.toggleWidgetPin() } label: {
+                    Image(systemName: tracker.widgetPinned ? "pin.fill" : "pin")
+                        .foregroundStyle(tracker.widgetPinned ? Color.accentColor : .primary)
+                }.help(tracker.widgetPinned ? "Widget pinned above apps" : "Widget on desktop")
                 Spacer()
                 if tracker.streak > 0 {
                     Label("\(tracker.streak)-day streak", systemImage: "flame")
@@ -94,26 +103,33 @@ private struct PassiveView: View {
 
 private struct LockedInView: View {
     @ObservedObject var tracker: Tracker
-    let lock: LockSession
 
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text(lock.project ?? "Focus").font(.headline).lineLimit(1)
+                Text(tracker.lockProject ?? "Focus").font(.headline).lineLimit(1)
                 Spacer()
-                Text("LOCKED IN").font(.caption2.weight(.bold))
+                Text(tracker.lockPaused ? "PAUSED" : "LOCKED IN").font(.caption2.weight(.bold))
                     .padding(.horizontal, 7).padding(.vertical, 2)
                     .overlay(Capsule().strokeBorder(.secondary, lineWidth: 1))
             }
-            Text(lock.remaining.countdown)
+            Text(tracker.lockRemaining.countdown)
                 .font(.system(size: 48, weight: .heavy, design: .rounded))
                 .monospacedDigit()
                 .contentTransition(.numericText())
+                .opacity(tracker.lockPaused ? 0.5 : 1)
             Text("agents still counting underneath")
                 .font(.caption).foregroundStyle(.secondary)
 
-            Button(role: .cancel) { tracker.endLock(completed: false) } label: {
-                Text("End session early").frame(maxWidth: .infinity)
+            HStack(spacing: 10) {
+                Button { tracker.togglePauseLock() } label: {
+                    Label(tracker.lockPaused ? "Resume" : "Pause",
+                          systemImage: tracker.lockPaused ? "play.fill" : "pause.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                Button(role: .cancel) { tracker.endLock(completed: false) } label: {
+                    Label("Stop", systemImage: "stop.fill").frame(maxWidth: .infinity)
+                }
             }
             .controlSize(.large)
             .padding(.top, 4)
@@ -132,15 +148,43 @@ private struct LiveBadge: View {
 }
 
 private struct AgentRunningRow: View {
-    let name: String
-    let count: Int
+    @ObservedObject var tracker: Tracker
+    @State private var expanded = false
+
+    private var count: Int { tracker.totalAgentCount }
+
     var body: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "gearshape.2")
-            Text(count > 1 ? "\(count) agents running" : "Agent running on \(name)")
-                .lineLimit(1).truncationMode(.middle)
+        VStack(alignment: .leading, spacing: 6) {
+            Button { withAnimation(.easeInOut(duration: 0.15)) { expanded.toggle() } } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "gearshape.2")
+                    Text(count > 1 ? "\(count) agents running"
+                                   : "Agent on \(tracker.activeSessions.first?.projectName ?? "project")")
+                        .lineLimit(1).truncationMode(.middle)
+                    Spacer()
+                    if count > 1 {
+                        Image(systemName: expanded ? "chevron.up" : "chevron.down").font(.caption2)
+                    }
+                }
+                .font(.caption)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(count <= 1)
+
+            if expanded {
+                ForEach(Array(tracker.activeSessions.enumerated()), id: \.offset) { _, s in
+                    HStack(spacing: 6) {
+                        Circle().fill(.green).frame(width: 5, height: 5)
+                        Text(s.projectName).lineLimit(1).truncationMode(.middle)
+                        Spacer()
+                        Text(s.sessionId.prefix(6)).foregroundStyle(.tertiary).monospaced()
+                    }
+                    .font(.caption2)
+                    .padding(.leading, 4)
+                }
+            }
         }
-        .font(.caption)
         .padding(.horizontal, 10).padding(.vertical, 6)
         .frame(maxWidth: .infinity, alignment: .leading)
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3])))

@@ -26,17 +26,6 @@ struct DayLog: Codable {
     }
 }
 
-/// An active Lock In focus session.
-struct LockSession {
-    let project: String?
-    let start: Date
-    let duration: TimeInterval
-
-    var end: Date { start.addingTimeInterval(duration) }
-    var remaining: TimeInterval { max(0, end.timeIntervalSinceNow) }
-    var isOver: Bool { remaining <= 0 }
-}
-
 extension TimeInterval {
     /// "5.2h" style used on big numbers and share cards.
     var hoursCompact: String {

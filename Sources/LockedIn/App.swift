@@ -26,10 +26,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private var popover: NSPopover!
     private let tracker = Tracker()
+    private var widget: WidgetWindowController!
     private var cancellable: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         tracker.start()
+
+        widget = WidgetWindowController(tracker: tracker)
+        widget.restoreVisibility()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.imagePosition = .imageLeading
@@ -39,7 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover = NSPopover()
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 320, height: 460)
-        popover.contentViewController = NSHostingController(rootView: PopoverView(tracker: tracker))
+        popover.contentViewController = NSHostingController(
+            rootView: PopoverView(tracker: tracker, onToggleWidget: { [weak self] in self?.widget.toggle() })
+        )
 
         // Repaint the menu bar label on every tracker change.
         cancellable = tracker.objectWillChange.sink { [weak self] in
@@ -48,20 +54,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshStatusItem()
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        widget?.savePosition()
+    }
+
     private func refreshStatusItem() {
         guard let button = statusItem.button else { return }
 
-        if let lock = tracker.lockSession {
-            button.image = symbol("lock.fill")
-            button.title = " " + lock.remaining.countdown
+        if tracker.lockActive {
+            button.image = symbol(tracker.lockPaused ? "pause.fill" : "lock.fill")
+            button.title = " " + tracker.lockRemaining.countdown
             return
         }
 
-        let agentRunning = !tracker.activeAgents.isEmpty
+        let agentRunning = !tracker.activeSessions.isEmpty
         let name = agentRunning ? "gearshape.2.fill"
                  : tracker.humanActiveNow ? "circle.fill" : "circle"
         button.image = symbol(name)
-        button.title = " " + tracker.today.total.clockCompact
+        // Same format as the widget (1.4h), not h:mm — avoids "1:22 vs 1.4h" confusion.
+        button.title = " " + tracker.today.total.hoursCompact
     }
 
     private func symbol(_ name: String) -> NSImage? {
