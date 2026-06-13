@@ -61,15 +61,22 @@ final class Tracker: ObservableObject {
         rolloverIfNeeded()
 
         let human = HumanMonitor.sample()
-        let active = agents.activeAgents()
+        let (active, recent) = agents.scan()
         humanActiveNow = human.isActive
         activeAgents = active
 
         // Attribute the elapsed interval.
         if human.isActive {
-            // Prefer the project an agent is in (folder name); else the frontmost app
-            // gives us liveness but not a project, so fall back to last known project.
-            let proj = active.first?.projectName ?? currentProject ?? human.frontmostApp ?? "untitled"
+            // Project priority for human time, all zero-permission:
+            //  1. a live agent's project (strongest signal you're on it),
+            //  2. the most recently touched Claude project (you bounce editor<->agent),
+            //  3. the last project we attributed to (sticky within a session),
+            //  4. the frontmost app name as a last resort so time is never lost.
+            let proj = active.first?.projectName
+                ?? recent.first?.name
+                ?? currentProject
+                ?? human.frontmostApp
+                ?? "untitled"
             currentProject = proj
             today.projects[proj, default: ProjectTime()].human += Self.interval
         }

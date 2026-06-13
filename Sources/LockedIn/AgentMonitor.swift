@@ -11,6 +11,10 @@ import Foundation
 final class AgentMonitor {
     /// How fresh (seconds) a session file's mtime must be to count the agent as active.
     static let activeWindow: TimeInterval = 70
+    /// How recently (seconds) a project was touched to still claim ambiguous human time.
+    /// If you were just in project X with an agent and are now typing in your editor,
+    /// you're almost certainly still on X. 30 min covers a normal back-and-forth.
+    static let recentWindow: TimeInterval = 1800
 
     private let projectsDir: URL
     private var cwdCache: [String: String] = [:]   // file path -> last cwd
@@ -21,16 +25,20 @@ final class AgentMonitor {
         let sessionFile: URL
     }
 
-    init() {
-        projectsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".claude/projects", isDirectory: true)
+    /// A project touched recently, with how long ago. Used to attribute human-only time.
+    struct RecentProject {
+        let path: String
+        let name: String
+        let ageSeconds: TimeInterval
     }
 
-    /// All agents active within the last `activeWindow` seconds.
-    func activeAgents() -> [ActiveAgent] {
+    /// One directory scan → (live agents, recently-touched projects sorted newest-first).
+    /// Both callers share this so we walk `~/.claude/projects` only once per tick.
+    func scan() -> (active: [ActiveAgent], recent: [RecentProject]) {
         let fm = FileManager.default
-        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return [] }
-        var found: [String: ActiveAgent] = [:]  // keyed by project path, newest wins
+        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return ([], []) }
+        var active: [String: ActiveAgent] = [:]
+        var recent: [String: TimeInterval] = [:]   // cwd -> freshest age
         let now = Date()
 
         for dir in dirs {
@@ -38,14 +46,43 @@ final class AgentMonitor {
             guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { continue }
             guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]) else { continue }
             for f in files where f.pathExtension == "jsonl" {
-                guard let mtime = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
-                      now.timeIntervalSince(mtime) < Self.activeWindow else { continue }
+                guard let mtime = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else { continue }
+                let age = now.timeIntervalSince(mtime)
+                guard age < Self.recentWindow else { continue }
                 guard let cwd = lastCwd(in: f) else { continue }
-                let name = URL(fileURLWithPath: cwd).lastPathComponent
-                found[cwd] = ActiveAgent(projectPath: cwd, projectName: name, sessionFile: f)
+                let name = Self.displayName(for: cwd)
+                if age < (recent[cwd] ?? .infinity) { recent[cwd] = age }
+                if age < Self.activeWindow {
+                    active[cwd] = ActiveAgent(projectPath: cwd, projectName: name, sessionFile: f)
+                }
             }
         }
-        return Array(found.values)
+        let recentList = recent
+            .map { RecentProject(path: $0.key, name: Self.displayName(for: $0.key), ageSeconds: $0.value) }
+            .sorted { $0.ageSeconds < $1.ageSeconds }
+        return (Array(active.values), recentList)
+    }
+
+    init() {
+        projectsDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".claude/projects", isDirectory: true)
+    }
+
+    /// Folder names too generic to identify a project on their own. For these we prepend
+    /// the parent so `~/work/foo/frontend` shows as "foo/frontend", not a colliding "frontend".
+    private static let genericLeaves: Set<String> = [
+        "src", "app", "apps", "web", "www", "frontend", "backend", "client", "server",
+        "api", "lib", "packages", "code", "main", "core", "project",
+    ]
+
+    /// Stable, human-readable project identity derived from its path.
+    static func displayName(for path: String) -> String {
+        let parts = path.split(separator: "/").map(String.init)
+        guard let leaf = parts.last else { return path }
+        if genericLeaves.contains(leaf.lowercased()), parts.count >= 2 {
+            return "\(parts[parts.count - 2])/\(leaf)"
+        }
+        return leaf
     }
 
     /// Count of user prompts sent today across all session files modified today.
