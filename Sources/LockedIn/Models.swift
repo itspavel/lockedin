@@ -26,6 +26,14 @@ struct DayLog: Codable {
     }
 }
 
+/// Desktop widget size presets. Each shows progressively more detail.
+enum WidgetSize: String, CaseIterable, Identifiable {
+    case small, medium, large
+    var id: String { rawValue }
+    var width: CGFloat { self == .small ? 190 : self == .medium ? 240 : 290 }
+    var label: String { self == .small ? "S" : self == .medium ? "M" : "L" }
+}
+
 extension TimeInterval {
     /// "5.2h" style used on big numbers and share cards.
     var hoursCompact: String {

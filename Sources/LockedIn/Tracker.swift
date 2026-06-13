@@ -35,6 +35,17 @@ final class Tracker: ObservableObject {
         UserDefaults.standard.set(widgetPinned, forKey: "widget.pinned")
     }
 
+    /// Desktop widget size (S/M/L).
+    @Published var widgetSize: WidgetSize =
+        WidgetSize(rawValue: UserDefaults.standard.string(forKey: "widget.size") ?? "") ?? .medium
+    func setWidgetSize(_ s: WidgetSize) {
+        widgetSize = s
+        UserDefaults.standard.set(s.rawValue, forKey: "widget.size")
+    }
+
+    /// Characters typed in the editor today, from the extension heartbeat (counts only).
+    @Published private(set) var editorKeystrokes = 0
+
     private let store = Store()
     private let agents = AgentMonitor()
     private var timer: Timer?
@@ -121,6 +132,7 @@ final class Tracker: ObservableObject {
         // it knows the exact project and whether you're actively editing.
         let editorEditing = (beat?.editing ?? false)
         let editorProject = beat.flatMap(EditorMonitor.project)
+        if let k = beat?.keystrokes { editorKeystrokes = k }
         humanActiveNow = editorEditing || human.isActive
         activeAgents = active
         activeSessions = sessions

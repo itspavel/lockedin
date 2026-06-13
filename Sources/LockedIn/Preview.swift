@@ -27,6 +27,15 @@ enum Preview {
         )
         dump(card, to: outDir.appendingPathComponent("sharecard.png"))
 
+        // Desktop widget at each size, on a dark backdrop to mimic the frosted panel.
+        for s in WidgetSize.allCases {
+            tracker.setWidgetSize(s)
+            let w = DesktopWidgetView(tracker: tracker)
+                .background(Color(white: 0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            dump(w, to: outDir.appendingPathComponent("widget-\(s.rawValue).png"))
+        }
+
         print("rendered to \(dir)")
         exit(0)
     }

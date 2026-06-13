@@ -86,6 +86,12 @@ private struct PassiveView: View {
                     Image(systemName: tracker.widgetPinned ? "pin.fill" : "pin")
                         .foregroundStyle(tracker.widgetPinned ? Color.accentColor : .primary)
                 }.help(tracker.widgetPinned ? "Widget pinned above apps" : "Widget on desktop")
+                ForEach(WidgetSize.allCases) { s in
+                    Button { tracker.setWidgetSize(s) } label: {
+                        Text(s.label).font(.caption2.weight(.bold))
+                            .foregroundStyle(tracker.widgetSize == s ? Color.accentColor : .secondary)
+                    }.help("Widget size \(s.label)")
+                }
                 Spacer()
                 if tracker.streak > 0 {
                     Label("\(tracker.streak)-day streak", systemImage: "flame")
