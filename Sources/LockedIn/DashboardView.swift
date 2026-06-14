@@ -601,7 +601,7 @@ private struct RhythmCard: View {
     private func hourLabel(_ h: Int) -> String {
         let am = h < 12
         let h12 = h % 12 == 0 ? 12 : h % 12
-        return "\(h12)\(am ? "a" : "p")"
+        return "\(h12)\(am ? "am" : "pm")"
     }
 
     var body: some View {

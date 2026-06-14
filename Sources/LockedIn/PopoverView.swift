@@ -44,12 +44,14 @@ private struct PassiveView: View {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(d.humanTotal.hoursCompact)
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
+                    .fixedSize()                       // never truncate the headline number
                     .contentTransition(.numericText())
-                Text("focused").font(.callout).foregroundStyle(.secondary)
+                Text("focused").font(.callout).foregroundStyle(.secondary).fixedSize()
                 if d.agentTotal > 0 {
-                    Spacer()
+                    Spacer(minLength: 6)
                     Text("+ \(d.agentTotal.hoursCompact) agents")
                         .font(.caption).foregroundStyle(.secondary)
+                        .lineLimit(1).layoutPriority(-1)   // this flexes/truncates if space is tight
                 }
             }
 
