@@ -119,6 +119,15 @@ struct WidgetConfig: Codable {
     }
 }
 
+/// One day's time on a project (for the per-project activity breakdown).
+struct DayPoint: Identifiable, Sendable {
+    let date: String
+    let human: TimeInterval
+    let agent: TimeInterval
+    var id: String { date }
+    var total: TimeInterval { human + agent }
+}
+
 /// A project's totals across all tracked days (for the all-time Projects view).
 struct ProjectAggregate: Identifiable, Sendable {
     let name: String
@@ -126,10 +135,13 @@ struct ProjectAggregate: Identifiable, Sendable {
     var agent: TimeInterval = 0
     var tokens: [String: TokenCounts] = [:]   // model -> counts (for cost)
     var lastActive: String = ""               // most recent day key
+    var days: [DayPoint] = []                  // per-day time (newest first)
     var id: String { name }
     var total: TimeInterval { human + agent }
     var tokenTotal: Int { tokens.values.reduce(0) { $0 + $1.total } }
     var cost: Double { tokens.reduce(0) { $0 + Pricing.cost(model: $1.key, $1.value) } }
+    /// Days sorted by most active first (for "most active days").
+    var mostActiveDays: [DayPoint] { days.sorted { $0.total > $1.total } }
 }
 
 /// Desktop widget size presets. Each shows progressively more detail.

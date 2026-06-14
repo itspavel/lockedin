@@ -78,6 +78,7 @@ final class Store: @unchecked Sendable {
                 agg.human += pt.human
                 agg.agent += pt.agent
                 if day.date > agg.lastActive { agg.lastActive = day.date }
+                agg.days.append(DayPoint(date: day.date, human: pt.human, agent: pt.agent))
                 map[name] = agg
             }
             for (name, models) in day.tokens {

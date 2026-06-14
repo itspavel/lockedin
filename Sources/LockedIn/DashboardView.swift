@@ -148,16 +148,17 @@ private struct DashboardTab: View {
 private struct ProjectsTab: View {
     @ObservedObject var tracker: Tracker
     @State private var all: [ProjectAggregate] = []
+    @State private var expanded: Set<String> = []
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Projects").font(.largeTitle.weight(.bold))
-            Text("Every project you've worked on — all-time time split, tokens, cost, and last active.")
+            Text("Every project you've worked on — click one to see its details.")
                 .foregroundStyle(.secondary)
 
             VStack(spacing: 0) {
                 HStack {
-                    Text("Project").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("Project").frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 20)
                     Text("You").frame(width: 70, alignment: .trailing)
                     Text("Agents").frame(width: 70, alignment: .trailing)
                     Text("Total").frame(width: 70, alignment: .trailing)
@@ -172,17 +173,31 @@ private struct ProjectsTab: View {
                         .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
                 }
                 ForEach(all) { p in
-                    HStack {
-                        Text(p.name).lineLimit(1).truncationMode(.middle)
+                    let isOpen = expanded.contains(p.name)
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.15)) {
+                            if isOpen { expanded.remove(p.name) } else { expanded.insert(p.name) }
+                        }
+                    } label: {
+                        HStack {
+                            HStack(spacing: 6) {
+                                Image(systemName: isOpen ? "chevron.down" : "chevron.right")
+                                    .font(.caption2).foregroundStyle(.secondary).frame(width: 12)
+                                Text(p.name).lineLimit(1).truncationMode(.middle)
+                            }
                             .frame(maxWidth: .infinity, alignment: .leading)
-                        Text(p.human.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
-                        Text(p.agent.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
-                        Text(p.total.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit().fontWeight(.semibold)
-                        Text(p.tokenTotal > 0 ? p.tokenTotal.tokensCompact : "—").frame(width: 80, alignment: .trailing).monospacedDigit()
-                        Text(p.cost > 0 ? p.cost.usd : "—").frame(width: 70, alignment: .trailing).foregroundStyle(.secondary)
-                        Text(lastActive(p.lastActive)).frame(width: 90, alignment: .trailing).font(.caption).foregroundStyle(.secondary)
+                            Text(p.human.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
+                            Text(p.agent.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
+                            Text(p.total.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit().fontWeight(.semibold)
+                            Text(p.tokenTotal > 0 ? p.tokenTotal.tokensCompact : "—").frame(width: 80, alignment: .trailing).monospacedDigit()
+                            Text(p.cost > 0 ? p.cost.usd : "—").frame(width: 70, alignment: .trailing).foregroundStyle(.secondary)
+                            Text(Self.lastActive(p.lastActive)).frame(width: 90, alignment: .trailing).font(.caption).foregroundStyle(.secondary)
+                        }
+                        .font(.callout).padding(.vertical, 8).contentShape(Rectangle())
                     }
-                    .font(.callout).padding(.vertical, 7)
+                    .buttonStyle(.plain)
+
+                    if isOpen { ProjectDetail(p: p).padding(.leading, 20).padding(.bottom, 10) }
                     Divider().opacity(0.5)
                 }
             }
@@ -190,12 +205,58 @@ private struct ProjectsTab: View {
         .task { all = await Task.detached(priority: .userInitiated) { Store().projectTotals() }.value }
     }
 
-    private func lastActive(_ key: String) -> String {
+    static func lastActive(_ key: String) -> String {
         if key == DayLog.key() { return "today" }
         let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
         guard let d = f.date(from: key) else { return key }
         let o = DateFormatter(); o.dateFormat = "d MMM"
         return o.string(from: d)
+    }
+}
+
+/// The dropdown shown when a project row is expanded: split, model mix, busiest days.
+private struct ProjectDetail: View {
+    let p: ProjectAggregate
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                SplitBar(human: p.human, agent: p.agent, height: 10).frame(width: 200)
+                LegendDot(label: "You \(p.human.hoursCompact)", hatched: false)
+                LegendDot(label: "Agents \(p.agent.hoursCompact)", hatched: true)
+            }
+
+            if !p.tokens.isEmpty {
+                Text("Models used").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                ForEach(p.tokens.sorted { $0.value.total > $1.value.total }, id: \.key) { model, c in
+                    HStack {
+                        Text(Pricing.shortName(model)).frame(width: 110, alignment: .leading)
+                        Text("\(c.total.tokensCompact) tokens").monospacedDigit().foregroundStyle(.secondary)
+                        Spacer()
+                        Text("\(Pricing.cost(model: model, c).usd) API value").foregroundStyle(.secondary)
+                    }.font(.caption)
+                }
+            }
+
+            Text("Most active days").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+            let top = Array(p.mostActiveDays.prefix(7))
+            let maxT = top.map(\.total).max() ?? 1
+            ForEach(top) { d in
+                HStack(spacing: 10) {
+                    Text(ProjectsTab.lastActive(d.date)).font(.caption2).foregroundStyle(.secondary)
+                        .frame(width: 64, alignment: .leading)
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.08)).frame(width: 200, height: 8)
+                        Capsule().fill(Theme.human).frame(width: max(4, 200 * CGFloat(d.total / maxT)), height: 8)
+                    }
+                    Text(d.total.hoursCompact).font(.caption2).monospacedDigit()
+                        .frame(width: 56, alignment: .trailing).foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: 560, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
     }
 }
 
@@ -319,7 +380,7 @@ private struct SettingsTab: View {
             }
         }
         .toggleStyle(.switch)
-        .frame(maxWidth: 520, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func binding(for comp: WidgetComponent) -> Binding<Bool> {
