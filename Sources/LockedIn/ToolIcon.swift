@@ -1,4 +1,5 @@
 import AppKit
+import CoreImage
 
 /// Resolves the real macOS app icon for the tool you're using, so the widget can show
 /// the actual Claude / Cursor / Antigravity / VS Code logo. Rendered grayscale by the
@@ -30,5 +31,31 @@ enum ToolIcon {
             return img
         }
         return nil
+    }
+
+    private static var monoCache: [String: NSImage] = [:]
+
+    /// A desaturated, menu-bar-sized version of the tool's icon (real logo, not colourful).
+    static func monochrome(for tool: String?, size: CGFloat = 16) -> NSImage? {
+        guard let tool, let key = apps.first(where: { e in
+            let t = tool.lowercased(); return e.keys.contains { t.contains($0) }
+        })?.path else { return nil }
+        if let cached = monoCache[key] { return cached }
+        guard let icon = icon(for: tool),
+              let tiff = icon.tiffRepresentation, let ci = CIImage(data: tiff),
+              let filter = CIFilter(name: "CIColorControls") else { return nil }
+        filter.setValue(ci, forKey: kCIInputImageKey)
+        filter.setValue(0.0, forKey: kCIInputSaturationKey)   // strip colour
+        guard let output = filter.outputImage else { return nil }
+        let rep = NSCIImageRep(ciImage: output)
+        let full = NSImage(size: rep.size); full.addRepresentation(rep)
+
+        // Redraw at menu-bar size.
+        let out = NSImage(size: NSSize(width: size, height: size))
+        out.lockFocus()
+        full.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
+        out.unlockFocus()
+        monoCache[key] = out
+        return out
     }
 }

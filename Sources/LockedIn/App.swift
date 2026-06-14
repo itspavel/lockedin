@@ -67,10 +67,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        let agentRunning = !tracker.activeSessions.isEmpty
-        let name = agentRunning ? "gearshape.2.fill"
-                 : tracker.humanActiveNow ? "circle.fill" : "circle"
-        button.image = symbol(name)
+        // Show the current tool's real logo (grayscale) when active and identifiable;
+        // otherwise a state symbol.
+        if (tracker.humanActiveNow || !tracker.activeSessions.isEmpty),
+           let logo = ToolIcon.monochrome(for: tracker.currentTool, size: 16) {
+            logo.isTemplate = false
+            button.image = logo
+        } else {
+            let agentRunning = !tracker.activeSessions.isEmpty
+            let name = agentRunning ? "gearshape.2.fill"
+                     : tracker.humanActiveNow ? "circle.fill" : "circle"
+            button.image = symbol(name)
+        }
         // Same format as the widget (1.4h), not h:mm — avoids "1:22 vs 1.4h" confusion.
         button.title = " " + tracker.today.total.hoursCompact
     }
