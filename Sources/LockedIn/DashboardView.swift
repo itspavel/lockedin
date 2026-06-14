@@ -20,6 +20,9 @@ enum DashTab: String, CaseIterable, Identifiable {
 struct DashboardView: View {
     @ObservedObject var tracker: Tracker
     @State private var tab: DashTab = .dashboard
+    // History is read off the main thread, once — so tab switches never touch disk.
+    @State private var week: [DayLog] = []
+    @State private var monthValue: Double = 0
 
     var body: some View {
         HStack(spacing: 0) {
@@ -30,6 +33,13 @@ struct DashboardView: View {
                 .background(Color(nsColor: .textBackgroundColor))
         }
         .frame(minWidth: 860, minHeight: 600)
+        .task {
+            let w = await Task.detached(priority: .userInitiated) { Store().recentDays(7) }.value
+            let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
+            let month = String(DayLog.key().prefix(7))
+            week = w
+            monthValue = all.filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
+        }
     }
 
     // MARK: Sidebar
@@ -40,7 +50,7 @@ struct DashboardView: View {
                 Image(systemName: "lock.fill")
                 Text("LockedIn").font(.headline)
             }
-            .padding(.horizontal, 14).padding(.top, 30).padding(.bottom, 14)
+            .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 14)
 
             ForEach(DashTab.allCases) { t in
                 Button { tab = t } label: {
@@ -73,7 +83,7 @@ struct DashboardView: View {
 
     @ViewBuilder private var content: some View {
         switch tab {
-        case .dashboard: DashboardTab(tracker: tracker)
+        case .dashboard: DashboardTab(tracker: tracker, week: week, monthValue: monthValue)
         case .projects: ProjectsTab(tracker: tracker)
         case .agents: AgentsTab(tracker: tracker)
         case .settings: SettingsTab(tracker: tracker)
@@ -87,7 +97,8 @@ struct DashboardView: View {
 
 private struct DashboardTab: View {
     @ObservedObject var tracker: Tracker
-    @State private var week: [DayLog] = []   // loaded once, not on every scroll frame
+    let week: [DayLog]            // pre-loaded off the main thread
+    let monthValue: Double
 
     var body: some View {
         let d = tracker.today
@@ -121,7 +132,7 @@ private struct DashboardTab: View {
             }
 
             // Claude usage limits + ROI
-            UsageSection(tracker: tracker)
+            UsageSection(monthValue: monthValue)
 
             // Service status
             StatusSection()
@@ -134,7 +145,6 @@ private struct DashboardTab: View {
             Text("Projects").font(.headline)
             ProjectsTable(tracker: tracker)
         }
-        .onAppear { if week.isEmpty { week = tracker.recentDays(7) } }
     }
 }
 
@@ -319,9 +329,8 @@ private struct ConnectUsage: View {
 }
 
 private struct UsageSection: View {
-    @ObservedObject var tracker: Tracker
     @ObservedObject private var usage = UsageManager.shared
-    @State private var monthValue: Double = 0   // computed once, not per scroll frame
+    let monthValue: Double   // pre-loaded off the main thread
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -353,10 +362,6 @@ private struct UsageSection: View {
         .padding(14)
         .frame(maxWidth: 620, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
-        .onAppear {
-            let month = DayLog.key().prefix(7)
-            monthValue = tracker.allDays().filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
-        }
     }
 
     @ViewBuilder private func bar(_ title: String, _ w: UsageWindow?) -> some View {

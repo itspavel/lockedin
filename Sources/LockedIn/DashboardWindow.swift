@@ -14,11 +14,10 @@ final class DashboardWindowController {
         if window == nil {
             let w = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
-                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                styleMask: [.titled, .closable, .miniaturizable, .resizable],
                 backing: .buffered, defer: false
             )
-            w.title = "LockedIn"
-            w.titlebarAppearsTransparent = true
+            w.title = "LockedIn"          // sits in the title bar, separate from content
             w.isReleasedWhenClosed = false
             w.minSize = NSSize(width: 860, height: 600)
             w.center()
