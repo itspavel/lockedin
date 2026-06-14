@@ -299,10 +299,10 @@ private struct ConnectUsage: View {
                     Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                 }
             } else {
-                Text("Paste your claude.ai sessionKey. Stored only in your Keychain, used only to read your own usage.")
+                Text("Paste your whole claude.ai Cookie (or just the sessionKey). Only the sessionKey is kept, in your Keychain.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
-                    SecureField("sessionKey value…", text: $key)
+                    TextField("paste cookie or sessionKey…", text: $key)
                         .textFieldStyle(.roundedBorder)
                     Button("Connect") { usage.connect(key); key = "" }.disabled(key.isEmpty)
                 }
@@ -310,7 +310,7 @@ private struct ConnectUsage: View {
             Picker("Plan (for ROI)", selection: Binding(get: { usage.plan }, set: { usage.plan = $0 })) {
                 ForEach(Plan.allCases) { Text($0.label).tag($0) }
             }.pickerStyle(.segmented)
-            Text("Get the cookie: claude.ai → Settings → Usage, then in dev tools (Network) open the 'usage' request and copy the sessionKey value from its Cookie header.")
+            Text("Get the cookie: on claude.ai (logged in), open dev tools → Application/Storage → Cookies → claude.ai, copy the whole thing (or just the sessionKey), and paste it above.")
                 .font(.caption2).foregroundStyle(.tertiary)
         }
     }

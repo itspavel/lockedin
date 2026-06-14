@@ -46,11 +46,22 @@ final class UsageManager: ObservableObject {
         timer = t
     }
 
-    func connect(_ key: String) {
-        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        Keychain.set(trimmed.isEmpty ? nil : trimmed, for: cookieKey)
-        connected = !trimmed.isEmpty
+    /// Accepts either a bare sessionKey or the whole pasted Cookie string, and keeps only
+    /// the sessionKey value (stored in Keychain — never the rest of the cookie).
+    func connect(_ raw: String) {
+        let key = Self.extractSessionKey(raw)
+        Keychain.set(key.isEmpty ? nil : key, for: cookieKey)
+        connected = !key.isEmpty
         if connected { start() } else { session = nil; weekly = nil; weeklySonnet = nil }
+    }
+
+    static func extractSessionKey(_ raw: String) -> String {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Match "sessionKey=" exactly (not "sessionKeyLC="), value runs to ';' or whitespace.
+        if let r = s.range(of: "sessionKey=") {
+            return String(s[r.upperBound...].prefix { $0 != ";" && !$0.isWhitespace })
+        }
+        return s   // assume they pasted just the key
     }
 
     func disconnect() {
