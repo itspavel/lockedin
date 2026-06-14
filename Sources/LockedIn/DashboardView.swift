@@ -98,7 +98,7 @@ struct DashboardView: View {
         case .agents: AgentsTab(tracker: tracker)
         case .settings: SettingsTab(tracker: tracker)
         case .calendar: ComingSoon(title: "Calendar", note: "A day-by-day timeline of projects and focus sessions.")
-        case .reports: ComingSoon(title: "Reports", note: "CSV export and billing-style summaries.")
+        case .reports: ReportsTab()
         }
     }
 }
@@ -582,6 +582,85 @@ private struct ProjectsTable: View {
                 Divider().opacity(0.5)
             }
         }
+    }
+}
+
+// MARK: - Reports tab (all-time totals + CSV export)
+
+private struct ReportsTab: View {
+    @State private var days = 0
+    @State private var totalTime: TimeInterval = 0
+    @State private var totalTokens = 0
+    @State private var totalCost: Double = 0
+    @State private var projectCount = 0
+    @State private var exported: String?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Reports").font(.largeTitle.weight(.bold))
+            Text("All-time totals and a CSV export for invoicing or analysis.")
+                .foregroundStyle(.secondary)
+
+            let cols = [GridItem(.adaptive(minimum: 180), spacing: 12)]
+            LazyVGrid(columns: cols, spacing: 12) {
+                StatCard(icon: "clock", label: "Total focused", value: totalTime.hoursCompact, detail: "\(days) day\(days == 1 ? "" : "s") tracked")
+                StatCard(icon: "folder", label: "Projects", value: "\(projectCount)", detail: "all time")
+                StatCard(icon: "circle.hexagongrid", label: "Tokens", value: totalTokens.tokensCompact, detail: "all agents")
+                StatCard(icon: "dollarsign.circle", label: "API value", value: totalCost.usd, detail: "what your plan delivered")
+            }
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Export").font(.headline)
+                Text("One row per day per project: date, project, your minutes, agent minutes, tokens, API cost.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    Button { export() } label: { Label("Export CSV", systemImage: "square.and.arrow.down") }
+                    if let e = exported {
+                        Label("Saved \(e)", systemImage: "checkmark.circle.fill").font(.caption).foregroundStyle(.green)
+                    }
+                }
+            }
+            .dashCard(16)
+        }
+        .task {
+            let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
+            days = all.filter { $0.total > 0 }.count
+            totalTime = all.reduce(0) { $0 + $1.total }
+            totalTokens = all.reduce(0) { $0 + $1.tokenTotal.total }
+            totalCost = all.reduce(0) { $0 + $1.costToday }
+            projectCount = Set(all.flatMap { Array($0.projects.keys) + Array($0.tokens.keys) }).count
+        }
+    }
+
+    private func export() {
+        Task {
+            let csv = await Task.detached(priority: .userInitiated) { ReportsTab.buildCSV(Store().allDays()) }.value
+            let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first
+                ?? FileManager.default.temporaryDirectory
+            let url = downloads.appendingPathComponent("LockedIn-export-\(DayLog.key()).csv")
+            try? csv.write(to: url, atomically: true, encoding: .utf8)
+            NSWorkspace.shared.activateFileViewerSelecting([url])
+            exported = url.lastPathComponent
+        }
+    }
+
+    /// One row per (day, project). Numbers only.
+    nonisolated static func buildCSV(_ days: [DayLog]) -> String {
+        var rows = ["date,project,you_minutes,agent_minutes,tokens,api_cost_usd"]
+        for day in days.sorted(by: { $0.date < $1.date }) {
+            let names = Set(day.projects.keys).union(day.tokens.keys).sorted()
+            for name in names {
+                let pt = day.projects[name]
+                let you = Int((pt?.human ?? 0) / 60)
+                let agent = Int((pt?.agent ?? 0) / 60)
+                let tk = day.tokens[name] ?? [:]
+                let tokens = tk.values.reduce(0) { $0 + $1.total }
+                let cost = tk.reduce(0.0) { $0 + Pricing.cost(model: $1.key, $1.value) }
+                let safe = name.replacingOccurrences(of: "\"", with: "\"\"")
+                rows.append("\(day.date),\"\(safe)\",\(you),\(agent),\(tokens),\(String(format: "%.2f", cost))")
+            }
+        }
+        return rows.joined(separator: "\n")
     }
 }
 
