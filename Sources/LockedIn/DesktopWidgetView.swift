@@ -88,15 +88,23 @@ struct DesktopWidgetView: View {
         }
     }
 
-    /// XL-only stats row: streak, prompts, keystrokes — the "dashboard" extras.
+    /// XL-only stats: tokens + cost on top (the AI-era flex), then streak/prompts/typed.
     private func statsStrip(_ d: DayLog) -> some View {
-        HStack(spacing: 14) {
-            if tracker.streak > 0 {
-                Label("\(tracker.streak)d", systemImage: "flame")
+        VStack(alignment: .leading, spacing: 5) {
+            if d.tokenTotal.total > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "circle.hexagongrid")
+                    Text("\(d.tokenTotal.total.tokensCompact) tokens")
+                    Text("·").foregroundStyle(.tertiary)
+                    Text(d.costToday.usd).fontWeight(.semibold)
+                }
             }
-            Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
-            if tracker.editorKeystrokes > 0 {
-                Label("\(tracker.editorKeystrokes)", systemImage: "keyboard").help("chars typed")
+            HStack(spacing: 14) {
+                if tracker.streak > 0 { Label("\(tracker.streak)d", systemImage: "flame") }
+                Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
+                if tracker.editorKeystrokes > 0 {
+                    Label("\(tracker.editorKeystrokes)", systemImage: "keyboard").help("chars typed")
+                }
             }
         }
         .font(.caption2).foregroundStyle(.secondary)

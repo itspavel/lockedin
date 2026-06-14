@@ -23,7 +23,9 @@ enum Preview {
             agent: top?.time.agent ?? tracker.today.agentTotal,
             streak: tracker.streak,
             lifetime: tracker.lifetime(of: top?.name ?? ""),
-            prompts: tracker.today.prompts
+            prompts: tracker.today.prompts,
+            tokens: tracker.today.tokenTotal.total,
+            cost: tracker.today.costToday
         )
         dump(card, to: outDir.appendingPathComponent("sharecard.png"))
 

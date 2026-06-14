@@ -177,6 +177,9 @@ final class Tracker: ObservableObject {
         // Refresh prompt count cheaply (it scans today's files; fine at 5s cadence).
         today.prompts = agents.promptsToday()
 
+        // Accrue token usage from any newly-written agent output (incremental, cheap).
+        agents.accrueTokens(into: &today)
+
         if human.isActive || !active.isEmpty {
             store.save(today)
         }
@@ -207,6 +210,15 @@ final class Tracker: ObservableObject {
             "experiments": ProjectTime(human: 0.4 * 3600, agent: 0.1 * 3600),
         ]
         today.prompts = 47
+        today.tokens = [
+            "myapp-widget": [
+                "claude-opus-4-8": TokenCounts(input: 42_000, output: 180_000, cacheRead: 3_400_000, cacheWrite: 90_000),
+                "claude-fable-5": TokenCounts(input: 8_000, output: 60_000, cacheRead: 900_000, cacheWrite: 20_000),
+            ],
+            "client-dashboard": [
+                "claude-sonnet-4-6": TokenCounts(input: 12_000, output: 40_000, cacheRead: 600_000, cacheWrite: 15_000),
+            ],
+        ]
         streak = 9
         currentProject = "myapp-widget"
     }

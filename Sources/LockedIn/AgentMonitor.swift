@@ -18,6 +18,8 @@ final class AgentMonitor {
 
     private let projectsDir: URL
     private var cwdCache: [String: String] = [:]   // file path -> last cwd
+    private var offsets: [String: UInt64] = [:]    // file path -> bytes already parsed for tokens
+    private let offsetURL: URL
 
     struct ActiveAgent {
         let projectPath: String      // absolute path of the project the agent works in
@@ -93,6 +95,76 @@ final class AgentMonitor {
     init() {
         projectsDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects", isDirectory: true)
+        offsetURL = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("LockedIn/token-offsets.json")
+        if let data = try? Data(contentsOf: offsetURL),
+           let saved = try? JSONDecoder().decode([String: UInt64].self, from: data) {
+            offsets = saved
+        }
+    }
+
+    /// Accrue token usage from newly-appended JSONL lines into today's log.
+    /// Tracks a byte offset per session file so we only parse new bytes — never the
+    /// whole (potentially huge) log. On first sight of a file we baseline to its current
+    /// end and count only forward, so tokens accrue from app start like the time tracking.
+    /// Privacy: reads usage counts, model, and cwd only — never message content.
+    func accrueTokens(into day: inout DayLog) {
+        let fm = FileManager.default
+        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return }
+        var changed = false
+
+        for dir in dirs {
+            var isDir: ObjCBool = false
+            guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { continue }
+            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey]) else { continue }
+            for f in files where f.pathExtension == "jsonl" {
+                let path = f.path
+                guard let size = (try? f.resourceValues(forKeys: [.fileSizeKey]))?.fileSize else { continue }
+                let eof = UInt64(size)
+
+                guard let start = offsets[path] else {
+                    offsets[path] = eof; changed = true; continue   // baseline, don't backfill history
+                }
+                guard eof > start else { if eof < start { offsets[path] = eof; changed = true }; continue }
+
+                guard let handle = try? FileHandle(forReadingFrom: f) else { continue }
+                defer { try? handle.close() }
+                try? handle.seek(toOffset: start)
+                guard let data = try? handle.readToEnd(), !data.isEmpty else { continue }
+
+                // Only consume up to the last newline; a trailing partial line is mid-write.
+                guard let lastNL = data.lastIndex(of: 0x0A) else { continue }
+                let complete = data[..<lastNL]
+                offsets[path] = start + UInt64(lastNL) + 1
+                changed = true
+
+                for lineData in complete.split(separator: 0x0A) {
+                    guard let (project, model, counts) = Self.parseUsage(Data(lineData)) else { continue }
+                    day.tokens[project, default: [:]][model, default: TokenCounts()].add(counts)
+                }
+            }
+        }
+        if changed, let data = try? JSONEncoder().encode(offsets) {
+            try? data.write(to: offsetURL)
+        }
+    }
+
+    /// Pull (project, model, token counts) from one assistant JSONL line. Returns nil for
+    /// non-assistant lines or junk projects. Numbers only — content is never decoded.
+    private static func parseUsage(_ line: Data) -> (String, String, TokenCounts)? {
+        guard let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
+              obj["type"] as? String == "assistant",
+              let cwd = obj["cwd"] as? String, !isJunk(path: cwd),
+              let message = obj["message"] as? [String: Any],
+              let usage = message["usage"] as? [String: Any] else { return nil }
+        let model = (message["model"] as? String) ?? "unknown"
+        var c = TokenCounts()
+        c.input = usage["input_tokens"] as? Int ?? 0
+        c.output = usage["output_tokens"] as? Int ?? 0
+        c.cacheRead = usage["cache_read_input_tokens"] as? Int ?? 0
+        c.cacheWrite = usage["cache_creation_input_tokens"] as? Int ?? 0
+        return (displayName(for: cwd), model, c)
     }
 
     /// Paths we never track — scratch/throwaway locations that aren't real projects.

@@ -47,15 +47,20 @@ Build order, highest value first:
 5. Hourly activity sparkline — store per-hour buckets in the day log.
 6. Derived: current + longest focus block, human:agent ratio headline, weekly total.
 
-## LATER — the dashboard app (Stage 2, the "big app")
-Full companion window (not just the menu-bar popover), Clockify-style:
-- History: totals across all projects over time (day/week/month), per project drilldown.
-- Calendar view: which projects on which days, focus sessions on a timeline.
-- Projects view: rename/merge/archive projects, set goals, colors, hourly rate.
-- Settings dashboard: editor sensors, focus-shield shortcut, launch-at-login, privacy.
-- Reports/export (CSV) for the freelancer-billing use case.
-- This is the surface that justifies WidgetKit + iOS later (shared data layer).
-Note: keep the data layer (day logs) clean and rich now so the dashboard is just a reader.
+## LATER — the dashboard app (Stage 2, the "big app") — DIRECTION APPROVED 2026-06-14
+Wireframe approved (/tmp/lockedin-dashboard-sketch.html). Structure: left sidebar tabs +
+main content pane (macOS Settings-style, but Dashboard-led). SF Symbols, no emoji.
+Sidebar tabs (all wanted for v1):
+- **Dashboard** (hero): big total + human/agent split bar; Day/Week/Month/All switcher;
+  stat cards (tokens+cost, prompts, typed-vs-AI, focus blocks); weekly stacked bar chart;
+  projects table (split, you, agents, tokens, cost, last active).
+- **Projects**: per-project drilldown; rename/merge/archive; goals, colors, hourly rate.
+- **Calendar**: day-by-day timeline of projects + focus sessions.
+- **Agents & Tokens**: token usage, cost, model mix, per-agent breakdown.
+- **Reports / Export**: CSV export, billing-style reports (freelancer angle).
+- **Settings**: editor sensors, focus-shield shortcut, launch-at-login, privacy.
+Build the rich data layer first (Stage 1.5 below) — the dashboard is then just a reader.
+This shared data layer is also what justifies WidgetKit + iOS later.
 
 ## Backlog (not yet built)
 - App icon + first-run onboarding (find the menu bar item; install the Cursor extension).

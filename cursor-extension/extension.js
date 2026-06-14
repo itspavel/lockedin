@@ -13,7 +13,8 @@ const HEARTBEAT_DIR = path.join(os.homedir(), 'Library', 'Application Support', 
 const HEARTBEAT_FILE = path.join(HEARTBEAT_DIR, 'editor-heartbeat.json');
 const WRITE_INTERVAL_MS = 5000;
 
-let keystrokesTotal = 0;     // characters added this session (your "symbols typed")
+let typedTotal = 0;          // characters you actually typed (small edits)
+let generatedTotal = 0;      // characters pasted or written by the AI (large inserts)
 let lastEditAt = 0;          // epoch ms of last edit
 let statusItem;
 
@@ -26,13 +27,20 @@ function activate(context) {
   statusItem.show();
   context.subscriptions.push(statusItem);
 
-  // Count characters typed. We sum inserted text length per change — no content stored.
+  // Split edits into typed vs generated. A small change (≈1 char, no newline) is a
+  // keystroke; a large insert is a paste or an AI/agent edit. Lengths only, no content.
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.scheme !== 'file') return;
-      let added = 0;
-      for (const c of e.contentChanges) added += c.text.length;
-      if (added > 0) { keystrokesTotal += added; lastEditAt = Date.now(); }
+      let touched = false;
+      for (const c of e.contentChanges) {
+        const len = c.text.length;
+        if (len === 0) continue;
+        touched = true;
+        if (len <= 2 && !c.text.includes('\n')) typedTotal += len;  // a keystroke
+        else generatedTotal += len;                                  // paste / AI edit
+      }
+      if (touched) lastEditAt = Date.now();
     })
   );
 
@@ -76,7 +84,9 @@ function writeHeartbeat() {
     projectPath,
     file,
     language,
-    keystrokes: keystrokesTotal,
+    keystrokes: typedTotal,        // back-compat: "keystrokes" == characters you typed
+    typed: typedTotal,
+    generated: generatedTotal,
     editing: idleMs < idleCutoff && vscode.window.state.focused,
     focused: vscode.window.state.focused,
     ts: new Date().toISOString(),

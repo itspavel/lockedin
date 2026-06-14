@@ -9,6 +9,8 @@ struct ShareCard: View {
     let streak: Int
     let lifetime: TimeInterval
     let prompts: Int
+    var tokens: Int = 0
+    var cost: Double = 0
 
     private var total: TimeInterval { human + agent }
 
@@ -32,6 +34,12 @@ struct ShareCard: View {
                 badge("flame", "\(streak)-day streak")
                 badge("clock", "\(lifetime.hoursCompact) total")
                 badge("cpu", "\(prompts) prompts")
+            }
+            if tokens > 0 {
+                HStack(spacing: 10) {
+                    badge("circle.hexagongrid", "\(tokens.tokensCompact) tokens")
+                    badge("dollarsign.circle", "\(cost.usd) of compute")
+                }
             }
 
             HStack {
@@ -92,7 +100,9 @@ struct ShareCardSheet: View {
             human: t.human, agent: t.agent,
             streak: tracker.streak,
             lifetime: tracker.lifetime(of: name),
-            prompts: tracker.today.prompts
+            prompts: tracker.today.prompts,
+            tokens: tracker.today.tokenTotal.total,
+            cost: tracker.today.costToday
         )
     }
 

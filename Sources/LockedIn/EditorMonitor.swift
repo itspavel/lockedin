@@ -14,6 +14,8 @@ struct EditorMonitor {
         let file: String?
         let language: String?
         let keystrokes: Int?
+        let typed: Int?
+        let generated: Int?
         let editing: Bool?
         let focused: Bool?
         let ts: String?
