@@ -39,6 +39,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         dashboard = DashboardWindowController(tracker: tracker)
 
         StatusMonitor.shared.start()
+        UsageManager.shared.start()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.imagePosition = .imageLeading

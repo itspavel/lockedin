@@ -119,6 +119,9 @@ private struct DashboardTab: View {
                          value: "\(d.lockSessionsCompleted)", detail: "completed today")
             }
 
+            // Claude usage limits + ROI
+            UsageSection(tracker: tracker)
+
             // Service status
             StatusSection()
 
@@ -214,6 +217,10 @@ private struct SettingsTab: View {
                     set: { _ in tracker.toggleWidgetPin() }))
             }
 
+            section("Claude usage limits") {
+                ConnectUsage()
+            }
+
             section("Claude status alerts") {
                 Toggle("Notify me when a service goes down", isOn: Binding(
                     get: { StatusMonitor.shared.notifyOnOutage },
@@ -271,6 +278,100 @@ private struct SettingsTab: View {
 }
 
 // MARK: - Shared pieces
+
+private struct ConnectUsage: View {
+    @ObservedObject private var usage = UsageManager.shared
+    @State private var key = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if usage.connected {
+                HStack {
+                    Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    if let t = usage.lastChecked {
+                        Text("updated \(t.formatted(date: .omitted, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("Disconnect") { usage.disconnect() }
+                }
+                if let e = usage.error {
+                    Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                }
+            } else {
+                Text("Paste your claude.ai sessionKey. Stored only in your Keychain, used only to read your own usage.")
+                    .font(.caption).foregroundStyle(.secondary)
+                HStack {
+                    SecureField("sessionKey value…", text: $key)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Connect") { usage.connect(key); key = "" }.disabled(key.isEmpty)
+                }
+            }
+            Picker("Plan (for ROI)", selection: Binding(get: { usage.plan }, set: { usage.plan = $0 })) {
+                ForEach(Plan.allCases) { Text($0.label).tag($0) }
+            }.pickerStyle(.segmented)
+            Text("Get the cookie: claude.ai → Settings → Usage, then in dev tools (Network) open the 'usage' request and copy the sessionKey value from its Cookie header.")
+                .font(.caption2).foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private struct UsageSection: View {
+    @ObservedObject var tracker: Tracker
+    @ObservedObject private var usage = UsageManager.shared
+
+    private var monthValue: Double {
+        let month = DayLog.key().prefix(7)   // "2026-06"
+        return tracker.allDays().filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Claude usage").font(.headline)
+            if !usage.connected {
+                Text("Connect your Claude account in Settings to see your session and weekly limits.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                bar("Session (5 hour)", usage.session)
+                bar("Weekly (7 day)", usage.weekly)
+                bar("Weekly Sonnet (7 day)", usage.weeklySonnet)
+                if let e = usage.error {
+                    Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
+                }
+            }
+
+            Divider().padding(.vertical, 2)
+            // ROI: API-equivalent value vs flat subscription price.
+            HStack(spacing: 6) {
+                Image(systemName: "chart.line.uptrend.xyaxis")
+                Text("This month: **\(monthValue.usd)** of API value on your \(usage.plan.label) plan")
+                if usage.plan.monthlyPrice > 0 {
+                    Text("(\(String(format: "%.1f×", monthValue / usage.plan.monthlyPrice)))")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .font(.callout)
+        }
+        .padding(14)
+        .frame(maxWidth: 620, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+    }
+
+    @ViewBuilder private func bar(_ title: String, _ w: UsageWindow?) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title).font(.callout.weight(.medium))
+                Spacer()
+                if let r = w?.resetsAt {
+                    Text("resets \(r.formatted(date: .abbreviated, time: .shortened))")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            ProgressView(value: min((w?.percent ?? 0) / 100, 1))
+            Text("\(Int(w?.percent ?? 0))% used").font(.caption2).foregroundStyle(.secondary)
+        }
+    }
+}
 
 private struct StatusSection: View {
     @ObservedObject private var status = StatusMonitor.shared
