@@ -70,7 +70,7 @@ struct DayLog: Codable {
 
 /// A thing the desktop widget can show. The user picks which ones, in order, from the app.
 enum WidgetComponent: String, CaseIterable, Codable, Identifiable {
-    case total, split, projects, agents, tokens, keystrokes, streak
+    case total, split, projects, agents, tokens, keystrokes, streak, usage
     var id: String { rawValue }
     var label: String {
         switch self {
@@ -81,6 +81,7 @@ enum WidgetComponent: String, CaseIterable, Codable, Identifiable {
         case .tokens: "Tokens & cost"
         case .keystrokes: "Typed vs generated"
         case .streak: "Streak"
+        case .usage: "Claude usage limits"
         }
     }
     var icon: String {
@@ -92,6 +93,7 @@ enum WidgetComponent: String, CaseIterable, Codable, Identifiable {
         case .tokens: "circle.hexagongrid"
         case .keystrokes: "keyboard"
         case .streak: "flame"
+        case .usage: "gauge.with.dots.needle.50percent"
         }
     }
 }

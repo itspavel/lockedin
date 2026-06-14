@@ -4,6 +4,7 @@ import SwiftUI
 /// Dragging is a gesture passed up to the window controller (so button taps still work).
 struct DesktopWidgetView: View {
     @ObservedObject var tracker: Tracker
+    @ObservedObject private var usage = UsageManager.shared
     var onDrag: () -> Void = {}
     var onDragEnd: () -> Void = {}
 
@@ -111,6 +112,21 @@ struct DesktopWidgetView: View {
                 Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
             }
             .font(.caption2).foregroundStyle(.secondary)
+        case .usage:
+            if usage.connected {
+                VStack(alignment: .leading, spacing: 4) {
+                    usageBar("Session", usage.session?.percent)
+                    if size != .small { usageBar("Weekly", usage.weekly?.percent) }
+                }
+            }
+        }
+    }
+
+    private func usageBar(_ label: String, _ pct: Double?) -> some View {
+        HStack(spacing: 6) {
+            Text(label).font(.caption2).foregroundStyle(.secondary).frame(width: 50, alignment: .leading)
+            ProgressView(value: min((pct ?? 0) / 100, 1)).frame(maxWidth: 90)
+            Text("\(Int(pct ?? 0))%").font(.caption2).monospacedDigit().foregroundStyle(.secondary)
         }
     }
 

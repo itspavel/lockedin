@@ -39,6 +39,9 @@ struct DashboardView: View {
             let month = String(DayLog.key().prefix(7))
             week = w
             monthValue = all.filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
+            // Freshen live data when you open the dashboard.
+            await UsageManager.shared.refresh()
+            await StatusMonitor.shared.refresh()
         }
     }
 
@@ -213,8 +216,27 @@ private struct SettingsTab: View {
             Text("Settings").font(.largeTitle.weight(.bold))
 
             section("Desktop widget") {
-                Text("Pick what the widget shows. Reorder coming soon.")
-                    .font(.caption).foregroundStyle(.secondary)
+                // Live preview — updates as you change size and toggles.
+                HStack {
+                    Spacer()
+                    DesktopWidgetView(tracker: tracker)
+                        .frame(width: tracker.widgetSize.width)
+                        .padding(14)
+                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
+                            .fill(Color(white: 0.13)))
+                        .environment(\.colorScheme, .dark)
+                        .allowsHitTesting(false)
+                    Spacer()
+                }
+                .padding(.vertical, 4)
+
+                Picker("Size", selection: Binding(
+                    get: { tracker.widgetSize }, set: { tracker.setWidgetSize($0) })) {
+                    ForEach(WidgetSize.allCases) { Text($0.label).tag($0) }
+                }.pickerStyle(.segmented)
+
+                Divider().padding(.vertical, 4)
+                Text("Show on the widget").font(.caption).foregroundStyle(.secondary)
                 ForEach(WidgetComponent.allCases) { comp in
                     Toggle(isOn: binding(for: comp)) {
                         Label(comp.label, systemImage: comp.icon)
@@ -305,6 +327,7 @@ private struct ConnectUsage: View {
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
+                    Button("Refresh") { Task { await usage.refresh() } }
                     Button("Disconnect") { usage.disconnect() }
                 }
                 if let e = usage.error {

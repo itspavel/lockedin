@@ -51,7 +51,7 @@ final class StatusMonitor: ObservableObject {
 
     func start() {
         Task { await refresh() }
-        let t = Timer(timeInterval: 180, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: 120, repeats: true) { [weak self] _ in   // every 2 min
             Task { await self?.refresh() }
         }
         RunLoop.main.add(t, forMode: .common)

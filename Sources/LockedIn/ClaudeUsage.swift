@@ -38,10 +38,11 @@ final class UsageManager: ObservableObject {
     private var sessionKey: String? { Keychain.get(cookieKey) }
 
     func start() {
+        timer?.invalidate()
         connected = (sessionKey?.isEmpty == false)
         guard connected else { return }
         Task { await refresh() }
-        let t = Timer(timeInterval: 300, repeats: true) { [weak self] _ in Task { await self?.refresh() } }
+        let t = Timer(timeInterval: 120, repeats: true) { [weak self] _ in Task { await self?.refresh() } }   // every 2 min
         RunLoop.main.add(t, forMode: .common)
         timer = t
     }
