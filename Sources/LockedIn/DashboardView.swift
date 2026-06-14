@@ -147,13 +147,55 @@ private struct DashboardTab: View {
 
 private struct ProjectsTab: View {
     @ObservedObject var tracker: Tracker
+    @State private var all: [ProjectAggregate] = []
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             Text("Projects").font(.largeTitle.weight(.bold))
-            Text("Today's work per project — time split, tokens, and estimated cost.")
+            Text("Every project you've worked on — all-time time split, tokens, cost, and last active.")
                 .foregroundStyle(.secondary)
-            ProjectsTable(tracker: tracker)
+
+            VStack(spacing: 0) {
+                HStack {
+                    Text("Project").frame(maxWidth: .infinity, alignment: .leading)
+                    Text("You").frame(width: 70, alignment: .trailing)
+                    Text("Agents").frame(width: 70, alignment: .trailing)
+                    Text("Total").frame(width: 70, alignment: .trailing)
+                    Text("Tokens").frame(width: 80, alignment: .trailing)
+                    Text("Cost").frame(width: 70, alignment: .trailing)
+                    Text("Last").frame(width: 90, alignment: .trailing)
+                }
+                .font(.caption.weight(.semibold)).foregroundStyle(.secondary).padding(.vertical, 6)
+                Divider()
+                if all.isEmpty {
+                    Text("No projects tracked yet.").foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 10)
+                }
+                ForEach(all) { p in
+                    HStack {
+                        Text(p.name).lineLimit(1).truncationMode(.middle)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Text(p.human.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
+                        Text(p.agent.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit()
+                        Text(p.total.hoursCompact).frame(width: 70, alignment: .trailing).monospacedDigit().fontWeight(.semibold)
+                        Text(p.tokenTotal > 0 ? p.tokenTotal.tokensCompact : "—").frame(width: 80, alignment: .trailing).monospacedDigit()
+                        Text(p.cost > 0 ? p.cost.usd : "—").frame(width: 70, alignment: .trailing).foregroundStyle(.secondary)
+                        Text(lastActive(p.lastActive)).frame(width: 90, alignment: .trailing).font(.caption).foregroundStyle(.secondary)
+                    }
+                    .font(.callout).padding(.vertical, 7)
+                    Divider().opacity(0.5)
+                }
+            }
         }
+        .task { all = await Task.detached(priority: .userInitiated) { Store().projectTotals() }.value }
+    }
+
+    private func lastActive(_ key: String) -> String {
+        if key == DayLog.key() { return "today" }
+        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
+        guard let d = f.date(from: key) else { return key }
+        let o = DateFormatter(); o.dateFormat = "d MMM"
+        return o.string(from: d)
     }
 }
 

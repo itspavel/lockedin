@@ -119,6 +119,19 @@ struct WidgetConfig: Codable {
     }
 }
 
+/// A project's totals across all tracked days (for the all-time Projects view).
+struct ProjectAggregate: Identifiable, Sendable {
+    let name: String
+    var human: TimeInterval = 0
+    var agent: TimeInterval = 0
+    var tokens: [String: TokenCounts] = [:]   // model -> counts (for cost)
+    var lastActive: String = ""               // most recent day key
+    var id: String { name }
+    var total: TimeInterval { human + agent }
+    var tokenTotal: Int { tokens.values.reduce(0) { $0 + $1.total } }
+    var cost: Double { tokens.reduce(0) { $0 + Pricing.cost(model: $1.key, $1.value) } }
+}
+
 /// Desktop widget size presets. Each shows progressively more detail.
 enum WidgetSize: String, CaseIterable, Identifiable {
     case small, medium, large, xlarge

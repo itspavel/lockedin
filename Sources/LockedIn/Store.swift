@@ -69,6 +69,27 @@ final class Store: @unchecked Sendable {
             .sorted { $0.date > $1.date }
     }
 
+    /// Every project ever worked on, with all-time totals (time, tokens, cost, last active).
+    func projectTotals() -> [ProjectAggregate] {
+        var map: [String: ProjectAggregate] = [:]
+        for day in allDays() {
+            for (name, pt) in day.projects {
+                var agg = map[name] ?? ProjectAggregate(name: name)
+                agg.human += pt.human
+                agg.agent += pt.agent
+                if day.date > agg.lastActive { agg.lastActive = day.date }
+                map[name] = agg
+            }
+            for (name, models) in day.tokens {
+                var agg = map[name] ?? ProjectAggregate(name: name)
+                for (model, c) in models { agg.tokens[model, default: TokenCounts()].add(c) }
+                if day.date > agg.lastActive { agg.lastActive = day.date }
+                map[name] = agg
+            }
+        }
+        return map.values.sorted { $0.total > $1.total }
+    }
+
     /// Lifetime total seconds for a project across all saved days.
     func lifetimeTotal(project: String) -> TimeInterval {
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return 0 }
