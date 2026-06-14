@@ -20,6 +20,9 @@ final class Tracker: ObservableObject {
     @Published private(set) var activeSessions: [AgentMonitor.AgentSession] = []
     @Published private(set) var currentProject: String?
     @Published private(set) var currentTool: String?    // "Claude" / "Cursor" / "Antigravity"…
+    /// Project name -> its filesystem path (learned from agent sessions this run).
+    /// Powers git output stats; session-scoped since git stats are always live/today.
+    @Published private(set) var projectPaths: [String: String] = [:]
     @Published private(set) var streak = 0
     @Published private(set) var editorConnected = false
 
@@ -182,6 +185,10 @@ final class Tracker: ObservableObject {
         humanActiveNow = editorEditing || human.isActive || engaged
         activeAgents = active
         activeSessions = sessions
+
+        // Learn project name -> path so git stats can find each repo.
+        for s in sessions { projectPaths[s.projectName] = s.projectPath }
+        for r in recent where !r.path.isEmpty { projectPaths[r.name] = r.path }
 
         currentTool = !active.isEmpty ? "Claude"
             : beat?.editor ?? (human.isDevApp ? human.frontmostApp : currentTool)

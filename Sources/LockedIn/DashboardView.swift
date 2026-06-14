@@ -108,6 +108,7 @@ struct DashboardView: View {
 private struct DashboardTab: View {
     @ObservedObject var tracker: Tracker
     let monthValue: Double
+    @State private var git: GitOutput?
 
     var body: some View {
         let d = tracker.today
@@ -142,6 +143,23 @@ private struct DashboardTab: View {
                          detail: tracker.editorGenerated > 0 ? "\(tracker.editorGenerated.tokensCompact) AI-generated" : "your keystrokes")
                 StatCard(icon: "lock.fill", label: "Focus sessions",
                          value: "\(d.lockSessionsCompleted)", detail: "completed today")
+                if let g = git, g.hasOutput {
+                    StatCard(icon: "chevron.left.forwardslash.chevron.right", label: "Shipped today",
+                             value: "\(g.commits) commit\(g.commits == 1 ? "" : "s")",
+                             detail: "+\(g.added.tokensCompact) −\(g.deleted.tokensCompact) lines")
+                }
+            }
+            .task(id: d.projects.keys.sorted().joined(separator: ",")) {
+                let paths = tracker.projectPaths
+                let names = Array(d.projects.keys)
+                git = await Task.detached(priority: .utility) { () -> GitOutput in
+                    var agg = GitOutput()
+                    for n in names {
+                        guard let p = paths[n], let o = GitStats.today(path: p) else { continue }
+                        agg.add(o)
+                    }
+                    return agg
+                }.value
             }
 
             // When you do your focused work today

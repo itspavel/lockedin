@@ -43,8 +43,11 @@ Build order, highest value first:
 2. Typed vs AI-generated chars — extension: a small change (~1 char) = typing; a big insert
    (paste / AI edit) = generated. Track both separately. Surface "typed" as the human stat.
 3. Model mix (Opus/Sonnet/Fable/Haiku) per day — falls out of #1.
-4. Lines +/- per project (git diff --stat) and commits today / branch.
-5. Hourly activity sparkline — store per-hour buckets in the day log.
+4. ~~Lines +/- per project (git diff --stat) and commits today / branch.~~ (Done 2026-06-15:
+   GitStats.swift shells git per repo; "Shipped today" card = commits + net lines on Dashboard.
+   Uses learned name->path map. NEXT IDEA: GitHub contributions (pushed commits, green squares).)
+5. ~~Hourly activity sparkline — store per-hour buckets in the day log.~~ (Done 2026-06-15:
+   DayLog.hourly + "Today's rhythm" card on Dashboard. DayLog now has a defensive decoder.)
 6. Derived: current + longest focus block, human:agent ratio headline, weekly total.
 
 ## LATER — the dashboard app (Stage 2, the "big app") — DIRECTION APPROVED 2026-06-14
