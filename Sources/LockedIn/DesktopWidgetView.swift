@@ -52,7 +52,7 @@ struct DesktopWidgetView: View {
         switch c {
         case .total:
             HStack(alignment: .firstTextBaseline, spacing: 5) {
-                Text(d.total.hoursCompact)
+                Text(d.humanTotal.hoursCompact)
                     .font(.system(size: size == .small ? 34 : 44, weight: .heavy, design: .rounded))
                     .contentTransition(.numericText())
                 Text("focused").font(size == .small ? .caption : .callout).foregroundStyle(.secondary)

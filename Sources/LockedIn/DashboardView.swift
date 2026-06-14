@@ -81,7 +81,7 @@ struct DashboardView: View {
 
             Spacer()
             if tracker.streak > 0 {
-                Label("\(tracker.streak)-day streak · \(tracker.today.total.hoursCompact) today",
+                Label("\(tracker.streak)-day streak · \(tracker.today.humanTotal.hoursCompact) today",
                       systemImage: "flame")
                     .font(.caption).foregroundStyle(.secondary)
                     .padding(14)
@@ -114,11 +114,15 @@ private struct DashboardTab: View {
         VStack(alignment: .leading, spacing: 22) {
             Text("Dashboard").font(.largeTitle.weight(.bold))
 
-            // Hero
+            // Hero — your focused time; agents are a separate stat.
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(d.total.hoursCompact).font(.system(size: 52, weight: .black, design: .rounded))
-                Text("focused today · \(tracker.sortedProjects.count) project\(tracker.sortedProjects.count == 1 ? "" : "s")")
+                Text(d.humanTotal.hoursCompact).font(.system(size: 52, weight: .black, design: .rounded))
+                Text("focused today")
                     .foregroundStyle(.secondary)
+                if d.agentTotal > 0 {
+                    Text("· + \(d.agentTotal.hoursCompact) agents")
+                        .foregroundStyle(.secondary)
+                }
             }
             SplitBar(human: d.humanTotal, agent: d.agentTotal, height: 14).frame(maxWidth: 620)
             HStack(spacing: 18) {
@@ -159,6 +163,7 @@ private struct ProjectsTab: View {
     @ObservedObject var tracker: Tracker
     @State private var all: [ProjectAggregate] = []
     @State private var expanded: Set<String> = []
+    private var totalTokensAll: Int { all.reduce(0) { $0 + $1.tokenTotal } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -207,7 +212,7 @@ private struct ProjectsTab: View {
                     }
                     .buttonStyle(.plain)
 
-                    if isOpen { ProjectDetail(p: p).padding(.leading, 20).padding(.bottom, 10) }
+                    if isOpen { ProjectDetail(p: p, totalTokens: totalTokensAll).padding(.leading, 20).padding(.bottom, 10) }
                     Divider().opacity(0.5)
                 }
             }
@@ -227,6 +232,7 @@ private struct ProjectsTab: View {
 /// The dropdown shown when a project row is expanded: split, model mix, busiest days.
 private struct ProjectDetail: View {
     let p: ProjectAggregate
+    let totalTokens: Int
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -234,6 +240,22 @@ private struct ProjectDetail: View {
                 SplitBar(human: p.human, agent: p.agent, height: 10).frame(width: 200)
                 LegendDot(label: "You \(p.human.hoursCompact)", hatched: false)
                 LegendDot(label: "Agents \(p.agent.hoursCompact)", hatched: true)
+            }
+
+            // Usage share — this project's slice of your total token usage (a proxy for
+            // "which project eats your limits"; Claude doesn't report limits per project).
+            if totalTokens > 0 && p.tokenTotal > 0 {
+                let share = Double(p.tokenTotal) / Double(totalTokens) * 100
+                Text("Usage share").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                HStack(spacing: 10) {
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Color.primary.opacity(0.08)).frame(width: 200, height: 8)
+                        Capsule().fill(Theme.agent.opacity(0.75)).frame(width: max(4, 200 * share / 100), height: 8)
+                    }
+                    Text("\(Int(share.rounded()))% of your tokens").font(.caption)
+                    Spacer()
+                    Text("\(p.cost.usd) API value").font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             if !p.tokens.isEmpty {
@@ -628,7 +650,7 @@ private struct CalendarTab: View {
         let date = cal.date(byAdding: .day, value: week * 7 + day, to: start) ?? Date()
         let key = DayLog.key(for: date)
         let log = byDate[key]
-        let total = log?.total ?? 0
+        let total = log?.humanTotal ?? 0   // brightness = your focused time
         let future = date > Date()
         return RoundedRectangle(cornerRadius: 3)
             .fill(future ? Color.primary.opacity(0.02) : Color.primary.opacity(intensity(total)))
@@ -648,7 +670,8 @@ private struct CalendarTab: View {
 
     private func tooltip(_ key: String, _ day: DayLog?) -> String {
         guard let day, day.total > 0 else { return "\(key) · nothing tracked" }
-        var s = "\(key) · \(day.total.hoursCompact) focused\nYou \(day.humanTotal.hoursCompact) · Agents \(day.agentTotal.hoursCompact)"
+        var s = "\(key) · \(day.humanTotal.hoursCompact) focused"
+        if day.agentTotal > 0 { s += " · + \(day.agentTotal.hoursCompact) agents" }
         if day.tokenTotal.total > 0 { s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value" }
         return s
     }
@@ -659,6 +682,7 @@ private struct CalendarTab: View {
 private struct ReportsTab: View {
     @State private var days = 0
     @State private var totalTime: TimeInterval = 0
+    @State private var agentTime: TimeInterval = 0
     @State private var totalTokens = 0
     @State private var totalCost: Double = 0
     @State private var projectCount = 0
@@ -672,10 +696,10 @@ private struct ReportsTab: View {
 
             let cols = [GridItem(.adaptive(minimum: 180), spacing: 12)]
             LazyVGrid(columns: cols, spacing: 12) {
-                StatCard(icon: "clock", label: "Total focused", value: totalTime.hoursCompact, detail: "\(days) day\(days == 1 ? "" : "s") tracked")
+                StatCard(icon: "clock", label: "Your focused time", value: totalTime.hoursCompact, detail: "\(days) day\(days == 1 ? "" : "s") tracked")
+                StatCard(icon: "gearshape.2", label: "Agent time", value: agentTime.hoursCompact, detail: "ran for you")
                 StatCard(icon: "folder", label: "Projects", value: "\(projectCount)", detail: "all time")
-                StatCard(icon: "circle.hexagongrid", label: "Tokens", value: totalTokens.tokensCompact, detail: "all agents")
-                StatCard(icon: "dollarsign.circle", label: "API value", value: totalCost.usd, detail: "what your plan delivered")
+                StatCard(icon: "circle.hexagongrid", label: "Tokens", value: totalTokens.tokensCompact, detail: totalCost.usd + " API value")
             }
 
             VStack(alignment: .leading, spacing: 10) {
@@ -694,7 +718,8 @@ private struct ReportsTab: View {
         .task {
             let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
             days = all.filter { $0.total > 0 }.count
-            totalTime = all.reduce(0) { $0 + $1.total }
+            totalTime = all.reduce(0) { $0 + $1.humanTotal }
+            agentTime = all.reduce(0) { $0 + $1.agentTotal }
             totalTokens = all.reduce(0) { $0 + $1.tokenTotal.total }
             totalCost = all.reduce(0) { $0 + $1.costToday }
             projectCount = Set(all.flatMap { Array($0.projects.keys) + Array($0.tokens.keys) }).count

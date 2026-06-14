@@ -40,12 +40,17 @@ private struct PassiveView: View {
                 LiveBadge(active: tracker.humanActiveNow || !tracker.activeAgents.isEmpty)
             }
 
-            // The one dominant number.
+            // The one dominant number — YOUR focused time (agents shown separately below).
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(d.total.hoursCompact)
+                Text(d.humanTotal.hoursCompact)
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .contentTransition(.numericText())
                 Text("focused").font(.callout).foregroundStyle(.secondary)
+                if d.agentTotal > 0 {
+                    Spacer()
+                    Text("+ \(d.agentTotal.hoursCompact) agents")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
             }
 
             SplitBar(human: d.humanTotal, agent: d.agentTotal)
