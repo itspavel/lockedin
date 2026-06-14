@@ -8,6 +8,9 @@ import UserNotifications
 @MainActor
 final class Tracker: ObservableObject {
     static let interval: TimeInterval = 5
+    /// How recently an agent must have worked for "reading/thinking" time to still count
+    /// as focus on that project (you're in a live session, not walked away).
+    static let sessionHotWindow: TimeInterval = 180
 
     // Published snapshot the menu bar binds to.
     @Published private(set) var today: DayLog
@@ -135,7 +138,14 @@ final class Tracker: ObservableObject {
         let editorEditing = (beat?.editing ?? false)
         let editorProject = beat.flatMap(EditorMonitor.project)
         if let k = beat?.keystrokes { editorKeystrokes = k }
-        humanActiveNow = editorEditing || human.isActive
+
+        // "Engaged in a live session": you're not typing, but a dev app/terminal is
+        // frontmost and an agent worked on a project moments ago — i.e. you're reading the
+        // output or thinking about the next prompt. That's real focus and used to fall
+        // through the cracks. Auto-stops ~3 min after the agent's last activity (you left).
+        let freshestAgentAge = recent.first?.ageSeconds ?? .infinity
+        let engaged = human.isDevApp && freshestAgentAge < Self.sessionHotWindow
+        humanActiveNow = editorEditing || human.isActive || engaged
         activeAgents = active
         activeSessions = sessions
 

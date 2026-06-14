@@ -84,9 +84,12 @@ final class WidgetWindowController {
     }
 
     private func sizeToContent() {
-        guard let host = (panel.contentView?.subviews.first?.subviews.first) as? NSView else { return }
-        host.layoutSubtreeIfNeeded()
-        let fit = host.fittingSize
+        // Measure with a fresh, UNCONSTRAINED hosting view. The live host is pinned to fill
+        // the window by Auto Layout, so its fittingSize just echoes the current width and the
+        // window never grows. A throwaway view reports the SwiftUI content's true ideal size.
+        let measure = NSHostingView(rootView: DesktopWidgetView(tracker: tracker))
+        measure.layoutSubtreeIfNeeded()
+        let fit = measure.fittingSize
         let size = NSSize(width: fit.width > 0 ? fit.width : tracker.widgetSize.width,
                           height: fit.height > 0 ? fit.height : 210)
         // Keep the top-left corner anchored as it grows/shrinks.

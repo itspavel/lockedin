@@ -29,6 +29,34 @@ Shortcuts named exactly "LockedIn Focus On" and "LockedIn Focus Off", each with 
 "Set Focus" action (On / Off). LockedIn triggers them automatically. Without them it's a no-op
 (LockedIn still never posts its own notifications mid-session).
 
+## NOW — functionality + widget enrichment (Stage 1.5)
+Build order, highest value first:
+0. FIX focus-detection gap (core correctness). Today time only counts while typing
+   (<120s input) or while an agent is mid-response. The in-between — reading the agent's
+   output, thinking about the next prompt — is uncounted. Fix: if a Claude Code session
+   on the current project was active recently (~3 min) AND a dev app/terminal is frontmost,
+   count it as focused time even without keystrokes. Still stops when you walk away
+   (frontmost changes) or the session goes stale + no input.
+1. Token + cost tracking — parse `usage` from Claude Code JSONL (input/output/cache per
+   message), accumulate per project per day, estimate cost per model. Incremental tail-read
+   (byte offset per file) so we don't reparse huge logs each tick. Privacy: numbers only.
+2. Typed vs AI-generated chars — extension: a small change (~1 char) = typing; a big insert
+   (paste / AI edit) = generated. Track both separately. Surface "typed" as the human stat.
+3. Model mix (Opus/Sonnet/Fable/Haiku) per day — falls out of #1.
+4. Lines +/- per project (git diff --stat) and commits today / branch.
+5. Hourly activity sparkline — store per-hour buckets in the day log.
+6. Derived: current + longest focus block, human:agent ratio headline, weekly total.
+
+## LATER — the dashboard app (Stage 2, the "big app")
+Full companion window (not just the menu-bar popover), Clockify-style:
+- History: totals across all projects over time (day/week/month), per project drilldown.
+- Calendar view: which projects on which days, focus sessions on a timeline.
+- Projects view: rename/merge/archive projects, set goals, colors, hourly rate.
+- Settings dashboard: editor sensors, focus-shield shortcut, launch-at-login, privacy.
+- Reports/export (CSV) for the freelancer-billing use case.
+- This is the surface that justifies WidgetKit + iOS later (shared data layer).
+Note: keep the data layer (day logs) clean and rich now so the dashboard is just a reader.
+
 ## Backlog (not yet built)
 - App icon + first-run onboarding (find the menu bar item; install the Cursor extension).
 - Package Cursor extension as .vsix; publish or one-click install.
