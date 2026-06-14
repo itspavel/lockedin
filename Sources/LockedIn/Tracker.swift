@@ -18,6 +18,7 @@ final class Tracker: ObservableObject {
     @Published private(set) var activeAgents: [AgentMonitor.ActiveAgent] = []
     @Published private(set) var activeSessions: [AgentMonitor.AgentSession] = []
     @Published private(set) var currentProject: String?
+    @Published private(set) var currentTool: String?    // "Claude" / "Cursor" / "Antigravity"…
     @Published private(set) var streak = 0
     @Published private(set) var editorConnected = false
 
@@ -149,6 +150,11 @@ final class Tracker: ObservableObject {
         activeAgents = active
         activeSessions = sessions
 
+        // Which tool is in front of you: a live Claude Code agent → Claude (it's doing the
+        // token work); else the editor the sensor reports; else the frontmost dev app.
+        currentTool = !active.isEmpty ? "Claude"
+            : beat?.editor ?? (human.isDevApp ? human.frontmostApp : currentTool)
+
         if humanActiveNow {
             // Project priority for human time, all zero-permission:
             //  1. the editor extension's exact project (knows precisely),
@@ -221,6 +227,7 @@ final class Tracker: ObservableObject {
         ]
         streak = 9
         currentProject = "myapp-widget"
+        currentTool = "Claude"
     }
 
     var sortedProjects: [(name: String, time: ProjectTime)] {

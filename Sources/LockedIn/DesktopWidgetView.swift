@@ -93,7 +93,7 @@ struct DesktopWidgetView: View {
         VStack(alignment: .leading, spacing: 5) {
             if d.tokenTotal.total > 0 {
                 HStack(spacing: 6) {
-                    Image(systemName: "circle.hexagongrid")
+                    toolGlyph
                     Text("\(d.tokenTotal.total.tokensCompact) tokens")
                     Text("·").foregroundStyle(.tertiary)
                     Text(d.costToday.usd).fontWeight(.semibold)
@@ -159,6 +159,19 @@ struct DesktopWidgetView: View {
     }
 
     // MARK: - Header / controls
+
+    /// The real app icon of the current tool, grayscaled (real logo, not colourful).
+    /// Falls back to a generic SF Symbol when we can't identify an installed app.
+    @ViewBuilder private var toolGlyph: some View {
+        if let icon = ToolIcon.icon(for: tracker.currentTool) {
+            Image(nsImage: icon)
+                .resizable().interpolation(.high)
+                .frame(width: 13, height: 13)
+                .grayscale(1).opacity(0.9)
+        } else {
+            Image(systemName: "circle.hexagongrid")
+        }
+    }
 
     private var header: some View {
         HStack {
