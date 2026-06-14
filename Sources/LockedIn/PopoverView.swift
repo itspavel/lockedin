@@ -26,6 +26,7 @@ private struct PassiveView: View {
     @ObservedObject var tracker: Tracker
     @Binding var showShareSheet: Bool
     var onToggleWidget: () -> Void = {}
+    @State private var loginEnabled = LoginItem.isEnabled
 
     var body: some View {
         let d = tracker.today
@@ -88,9 +89,19 @@ private struct PassiveView: View {
                         .font(.caption).foregroundStyle(.secondary)
                         .help("\(tracker.streak)-day streak")
                 }
-                Button { NSApp.terminate(nil) } label: {
-                    Image(systemName: "power")
-                }.foregroundStyle(.secondary).help("Quit LockedIn")
+                Menu {
+                    Toggle("Launch at login", isOn: $loginEnabled)
+                    Divider()
+                    Button("Quit LockedIn") { NSApp.terminate(nil) }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .foregroundStyle(.secondary)
+                .onChange(of: loginEnabled) { _, want in
+                    loginEnabled = LoginItem.setEnabled(want)
+                }
             }
             .buttonStyle(.plain)
 

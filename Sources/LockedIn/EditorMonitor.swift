@@ -35,7 +35,7 @@ struct EditorMonitor {
 
     /// Project display name from the heartbeat, via the same rules as AgentMonitor.
     static func project(from beat: Beat) -> String? {
-        guard let p = beat.projectPath, !p.isEmpty else { return nil }
+        guard let p = beat.projectPath, !p.isEmpty, !AgentMonitor.isJunk(path: p) else { return nil }
         return AgentMonitor.displayName(for: p)
     }
 }

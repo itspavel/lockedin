@@ -60,7 +60,7 @@ final class AgentMonitor {
                 guard let mtime = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate else { continue }
                 let age = now.timeIntervalSince(mtime)
                 guard age < Self.recentWindow else { continue }
-                guard let cwd = lastCwd(in: f) else { continue }
+                guard let cwd = lastCwd(in: f), !Self.isJunk(path: cwd) else { continue }
                 let name = Self.displayName(for: cwd)
                 if age < (recent[cwd] ?? .infinity) { recent[cwd] = age }
                 if age < Self.activeWindow {
@@ -93,6 +93,19 @@ final class AgentMonitor {
     init() {
         projectsDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".claude/projects", isDirectory: true)
+    }
+
+    /// Paths we never track — scratch/throwaway locations that aren't real projects.
+    /// Keeps the project list clean (no "tmp" noise from test runs or one-off scripts).
+    static func isJunk(path: String) -> Bool {
+        let p = path.hasSuffix("/") ? String(path.dropLast()) : path
+        let leaf = (p as NSString).lastPathComponent.lowercased()
+        if leaf == "tmp" || leaf.isEmpty || leaf == "/" { return true }
+        let junkPrefixes = ["/tmp", "/private/tmp", "/private/var/folders", "/var/folders"]
+        if junkPrefixes.contains(where: { p == $0 || p.hasPrefix($0 + "/") }) { return true }
+        // Library/Caches and other non-work locations.
+        if p.contains("/Library/Caches") || p.contains("/.Trash") { return true }
+        return false
     }
 
     /// Folder names too generic to identify a project on their own. For these we prepend

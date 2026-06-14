@@ -77,6 +77,7 @@ final class Tracker: ObservableObject {
         lockRemaining = lockTotal
         lockPaused = false
         lockActive = true
+        FocusShield.set(true)     // best-effort system DND (no-op without the shortcut)
         startDisplayTimer()
     }
 
@@ -91,6 +92,7 @@ final class Tracker: ObservableObject {
         lockActive = false
         lockPaused = false
         lockRemaining = 0
+        FocusShield.set(false)    // lift the shield
         stopDisplayTimer()
         objectWillChange.send()
     }
