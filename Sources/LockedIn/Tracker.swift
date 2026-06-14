@@ -195,6 +195,8 @@ final class Tracker: ObservableObject {
                 ?? "untitled"
             currentProject = proj
             today.projects[proj, default: ProjectTime()].human += Self.interval
+            let hour = Calendar.current.component(.hour, from: Date())
+            today.hourly[hour, default: 0] += Self.interval
         }
 
         // Combined agent time: each parallel session contributes a full interval.

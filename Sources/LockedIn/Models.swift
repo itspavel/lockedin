@@ -32,6 +32,23 @@ struct DayLog: Codable {
     /// project -> model -> token counts. Lets us derive per-project totals,
     /// the model mix, and accurate cost (each model priced at its own rate).
     var tokens: [String: [String: TokenCounts]] = [:]
+    /// Local hour (0–23) -> YOUR focused seconds in that hour. Powers the daily-rhythm
+    /// strip ("when you do your focused work"). Human time only, like the headline.
+    var hourly: [Int: TimeInterval] = [:]
+
+    init(date: String) { self.date = date }
+
+    // Decode every field defensively (decodeIfPresent) so adding a new field never makes
+    // older day-log files fail to decode and disappear from history. Encoding stays synthesized.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        date = try c.decode(String.self, forKey: .date)
+        projects = try c.decodeIfPresent([String: ProjectTime].self, forKey: .projects) ?? [:]
+        prompts = try c.decodeIfPresent(Int.self, forKey: .prompts) ?? 0
+        lockSessionsCompleted = try c.decodeIfPresent(Int.self, forKey: .lockSessionsCompleted) ?? 0
+        tokens = try c.decodeIfPresent([String: [String: TokenCounts]].self, forKey: .tokens) ?? [:]
+        hourly = try c.decodeIfPresent([Int: TimeInterval].self, forKey: .hourly) ?? [:]
+    }
 
     var humanTotal: TimeInterval { projects.values.reduce(0) { $0 + $1.human } }
     var agentTotal: TimeInterval { projects.values.reduce(0) { $0 + $1.agent } }

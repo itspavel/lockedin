@@ -144,6 +144,9 @@ private struct DashboardTab: View {
                          value: "\(d.lockSessionsCompleted)", detail: "completed today")
             }
 
+            // When you do your focused work today
+            RhythmCard(hourly: d.hourly)
+
             // Claude usage limits + ROI
             UsageSection(monthValue: monthValue)
 
@@ -563,6 +566,64 @@ private struct StatCard: View {
             Label(label, systemImage: icon).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.system(size: 26, weight: .heavy, design: .rounded))
             Text(detail).font(.caption2).foregroundStyle(.secondary)
+        }
+        .dashCard()
+    }
+}
+
+/// 24-hour strip of YOUR focused time — shows the shape of your day and your peak hour.
+private struct RhythmCard: View {
+    let hourly: [Int: TimeInterval]
+
+    private var peak: Int? {
+        hourly.filter { $0.value > 0 }.max { $0.value < $1.value }?.key
+    }
+    private var maxVal: TimeInterval { max(hourly.values.max() ?? 0, 1) }
+
+    private func hourLabel(_ h: Int) -> String {
+        let am = h < 12
+        let h12 = h % 12 == 0 ? 12 : h % 12
+        return "\(h12)\(am ? "a" : "p")"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("Today's rhythm", systemImage: "waveform.path.ecg")
+                    .font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if let p = peak {
+                    Text("Peak \(hourLabel(p))–\(hourLabel((p + 1) % 24))")
+                        .font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                }
+            }
+
+            if hourly.values.reduce(0, +) == 0 {
+                Text("Fills in as you work through the day.")
+                    .font(.caption2).foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 14)
+            } else {
+                HStack(alignment: .bottom, spacing: 3) {
+                    ForEach(0..<24, id: \.self) { h in
+                        let v = hourly[h] ?? 0
+                        VStack(spacing: 0) {
+                            RoundedRectangle(cornerRadius: 2, style: .continuous)
+                                .fill(h == peak ? Theme.accent : Theme.human.opacity(v > 0 ? 0.55 : 0.08))
+                                .frame(height: max(3, CGFloat(v / maxVal) * 56))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .help(v > 0 ? "\(hourLabel(h)): \(v.hoursCompact)" : hourLabel(h))
+                    }
+                }
+                .frame(height: 56)
+                // Sparse axis: midnight, 6a, noon, 6p, 11p
+                HStack(spacing: 0) {
+                    ForEach([0, 6, 12, 18, 23], id: \.self) { h in
+                        Text(hourLabel(h)).font(.system(size: 9)).foregroundStyle(.tertiary)
+                            .frame(maxWidth: .infinity, alignment: h == 0 ? .leading : (h == 23 ? .trailing : .center))
+                    }
+                }
+            }
         }
         .dashCard()
     }
