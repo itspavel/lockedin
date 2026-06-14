@@ -255,7 +255,7 @@ private struct ProjectDetail: View {
             }
         }
         .padding(12)
-        .frame(maxWidth: 560, alignment: .leading)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
     }
 }

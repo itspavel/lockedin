@@ -9,8 +9,9 @@ import UserNotifications
 final class Tracker: ObservableObject {
     static let interval: TimeInterval = 5
     /// How recently an agent must have worked for "reading/thinking" time to still count
-    /// as focus on that project (you're in a live session, not walked away).
-    static let sessionHotWindow: TimeInterval = 180
+    /// as focus on that project. 5 min so flipping to another window/monitor while an agent
+    /// runs doesn't pause the clock; still auto-stops once the session goes truly cold.
+    static let sessionHotWindow: TimeInterval = 300
 
     // Published snapshot the menu bar binds to.
     @Published private(set) var today: DayLog
