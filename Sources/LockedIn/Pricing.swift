@@ -30,8 +30,9 @@ enum Pricing {
         let perOutput = r.output / 1_000_000
         return Double(c.input) * perInput
              + Double(c.output) * perOutput
-             + Double(c.cacheRead) * (perInput * 0.1)
-             + Double(c.cacheWrite) * (perInput * 1.25)
+             + Double(c.cacheRead) * (perInput * 0.1)     // cache read: 0.1× input
+             + Double(c.cacheWrite) * (perInput * 1.25)   // 5-min write: 1.25× input
+             + Double(c.cacheWrite1h) * (perInput * 2.0)  // 1-hour write: 2× input
     }
 
     /// Short friendly model label for the mix display, e.g. "Opus 4.8", "Fable 5".

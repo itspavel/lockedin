@@ -8,14 +8,18 @@ struct ProjectTime: Codable {
 }
 
 /// Token usage counts. Numbers only — message content is never read or stored.
+/// Cache writes are split by TTL because they're priced differently: 5-minute writes
+/// bill at 1.25× input, 1-hour writes at 2× input.
 struct TokenCounts: Codable {
     var input = 0
     var output = 0
     var cacheRead = 0
-    var cacheWrite = 0
-    var total: Int { input + output + cacheRead + cacheWrite }
+    var cacheWrite = 0      // 5-minute ephemeral cache writes
+    var cacheWrite1h = 0    // 1-hour ephemeral cache writes
+    var total: Int { input + output + cacheRead + cacheWrite + cacheWrite1h }
     mutating func add(_ o: TokenCounts) {
-        input += o.input; output += o.output; cacheRead += o.cacheRead; cacheWrite += o.cacheWrite
+        input += o.input; output += o.output; cacheRead += o.cacheRead
+        cacheWrite += o.cacheWrite; cacheWrite1h += o.cacheWrite1h
     }
 }
 

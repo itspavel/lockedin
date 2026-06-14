@@ -163,7 +163,14 @@ final class AgentMonitor {
         c.input = usage["input_tokens"] as? Int ?? 0
         c.output = usage["output_tokens"] as? Int ?? 0
         c.cacheRead = usage["cache_read_input_tokens"] as? Int ?? 0
-        c.cacheWrite = usage["cache_creation_input_tokens"] as? Int ?? 0
+        // Split cache writes by TTL for accurate pricing (5-min 1.25× vs 1-hour 2×).
+        if let cc = usage["cache_creation"] as? [String: Any] {
+            c.cacheWrite = cc["ephemeral_5m_input_tokens"] as? Int ?? 0
+            c.cacheWrite1h = cc["ephemeral_1h_input_tokens"] as? Int ?? 0
+        } else {
+            // No breakdown — treat the total as 5-minute (the common default).
+            c.cacheWrite = usage["cache_creation_input_tokens"] as? Int ?? 0
+        }
         return (displayName(for: cwd), model, c)
     }
 
