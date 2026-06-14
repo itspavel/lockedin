@@ -27,18 +27,26 @@ function activate(context) {
   statusItem.show();
   context.subscriptions.push(statusItem);
 
-  // Split edits into typed vs generated. A small change (≈1 char, no newline) is a
-  // keystroke; a large insert is a paste or an AI/agent edit. Lengths only, no content.
+  // Split edits into typed vs generated. A genuine keystroke is a single tiny change,
+  // in the file you're actively looking at, while the window is focused. Anything else
+  // (multi-change bursts, edits to background files, large inserts) = paste / AI / agent.
+  // Lengths only, no content stored.
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.document.uri.scheme !== 'file') return;
+      const active = vscode.window.activeTextEditor;
+      const onActiveDoc = active && e.document === active.document && vscode.window.state.focused;
+      const singleChange = e.contentChanges.length === 1;
       let touched = false;
       for (const c of e.contentChanges) {
         const len = c.text.length;
         if (len === 0) continue;
         touched = true;
-        if (len <= 2 && !c.text.includes('\n')) typedTotal += len;  // a keystroke
-        else generatedTotal += len;                                  // paste / AI edit
+        if (onActiveDoc && singleChange && len <= 2 && !c.text.includes('\n')) {
+          typedTotal += len;          // a real keystroke
+        } else {
+          generatedTotal += len;      // paste / AI / agent edit
+        }
       }
       if (touched) lastEditAt = Date.now();
     })
