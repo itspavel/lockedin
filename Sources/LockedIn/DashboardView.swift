@@ -630,7 +630,8 @@ private struct RhythmCard: View {
                                 .frame(height: max(3, CGFloat(v / maxVal) * 56))
                         }
                         .frame(maxWidth: .infinity)
-                        .help(v > 0 ? "\(hourLabel(h)): \(v.hoursCompact)" : hourLabel(h))
+                        .help(v > 0 ? "\(hourLabel(h))–\(hourLabel((h + 1) % 24)) · \(v.hoursCompact) focused"
+                                    : "\(hourLabel(h))–\(hourLabel((h + 1) % 24)) · no focus")
                     }
                 }
                 .frame(height: 56)
@@ -701,6 +702,13 @@ private struct CalendarTab: View {
             let maxT = max(byDate.values.map(\.total).max() ?? 1, 1)
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 3) {
+                    // Weekday labels (Mon/Wed/Fri, GitHub-style) for orientation.
+                    VStack(spacing: 3) {
+                        ForEach(0..<7, id: \.self) { d in
+                            Text(weekdayLabel(d)).font(.system(size: 9)).foregroundStyle(.tertiary)
+                                .frame(width: 26, height: 15, alignment: .trailing)
+                        }
+                    }
                     ForEach(0..<weeks, id: \.self) { w in
                         VStack(spacing: 3) { ForEach(0..<7, id: \.self) { d in cell(week: w, day: d, maxT: maxT) } }
                     }
@@ -734,8 +742,18 @@ private struct CalendarTab: View {
         return RoundedRectangle(cornerRadius: 3)
             .fill(future ? Color.primary.opacity(0.02) : Color.primary.opacity(intensity(total)))
             .frame(width: 15, height: 15)
-            .help(future ? "" : tooltip(key, log))
+            .help(future ? "" : tooltip(date: date, log))
     }
+
+    private func weekdayLabel(_ d: Int) -> String {
+        guard d % 2 == 1 else { return "" }   // only odd rows, GitHub-style
+        let cal = Calendar.current
+        return cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + d) % 7]
+    }
+
+    private static let dateFmt: DateFormatter = {
+        let f = DateFormatter(); f.dateFormat = "EEE, MMM d"; return f
+    }()
 
     private func intensity(_ t: TimeInterval) -> Double {
         switch t {
@@ -747,10 +765,16 @@ private struct CalendarTab: View {
         }
     }
 
-    private func tooltip(_ key: String, _ day: DayLog?) -> String {
-        guard let day, day.total > 0 else { return "\(key) · nothing tracked" }
-        var s = "\(key) · \(day.humanTotal.hoursCompact) focused"
+    private func tooltip(date: Date, _ day: DayLog?) -> String {
+        let head = Self.dateFmt.string(from: date)
+        guard let day, day.total > 0 else { return "\(head) · nothing tracked" }
+        var s = "\(head) · \(day.humanTotal.hoursCompact) focused"
         if day.agentTotal > 0 { s += " · + \(day.agentTotal.hoursCompact) agents" }
+        // What you worked on that day.
+        for (name, t) in day.projects.sorted(by: { $0.value.total > $1.value.total }).prefix(4) {
+            s += "\n• \(name) — \(t.human.hoursCompact)"
+            if t.agent > 0 { s += " · +\(t.agent.hoursCompact) ag" }
+        }
         if day.tokenTotal.total > 0 { s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value" }
         return s
     }
