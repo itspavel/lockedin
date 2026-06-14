@@ -508,6 +508,8 @@ private struct WeekChart: View {
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     Text(weekday(day.date)).font(.caption2).foregroundStyle(.secondary)
                 }
+                .contentShape(Rectangle())
+                .help(tooltip(day))
             }
         }
         .frame(height: 150, alignment: .bottom)
@@ -521,6 +523,16 @@ private struct WeekChart: View {
         guard let d = f.date(from: key) else { return "" }
         let w = DateFormatter(); w.dateFormat = "EEE"
         return w.string(from: d)
+    }
+    /// Hover breakdown: what that day's bar includes.
+    private func tooltip(_ day: DayLog) -> String {
+        var s = "\(day.date) · \(day.total.hoursCompact) focused\n"
+        s += "You \(day.humanTotal.hoursCompact) · Agents \(day.agentTotal.hoursCompact)"
+        if day.tokenTotal.total > 0 {
+            s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value"
+        }
+        if day.total == 0 { s = "\(day.date) · nothing tracked" }
+        return s
     }
 }
 
