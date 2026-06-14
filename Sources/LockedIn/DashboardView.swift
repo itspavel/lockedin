@@ -97,7 +97,7 @@ struct DashboardView: View {
         case .projects: ProjectsTab(tracker: tracker)
         case .agents: AgentsTab(tracker: tracker)
         case .settings: SettingsTab(tracker: tracker)
-        case .calendar: ComingSoon(title: "Calendar", note: "A day-by-day timeline of projects and focus sessions.")
+        case .calendar: CalendarTab()
         case .reports: ReportsTab()
         }
     }
@@ -582,6 +582,75 @@ private struct ProjectsTable: View {
                 Divider().opacity(0.5)
             }
         }
+    }
+}
+
+// MARK: - Calendar tab (contribution-style heatmap)
+
+private struct CalendarTab: View {
+    @State private var byDate: [String: DayLog] = [:]
+    private let weeks = 18
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Calendar").font(.largeTitle.weight(.bold))
+            Text("Your focus over time — each square is a day, brighter means more work. Hover for details.")
+                .foregroundStyle(.secondary)
+
+            let maxT = max(byDate.values.map(\.total).max() ?? 1, 1)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 3) {
+                    ForEach(0..<weeks, id: \.self) { w in
+                        VStack(spacing: 3) { ForEach(0..<7, id: \.self) { d in cell(week: w, day: d, maxT: maxT) } }
+                    }
+                }
+                // Legend
+                HStack(spacing: 5) {
+                    Text("Less").font(.caption2).foregroundStyle(.secondary)
+                    ForEach([0.06, 0.25, 0.45, 0.7, 1.0], id: \.self) { o in
+                        RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(o)).frame(width: 13, height: 13)
+                    }
+                    Text("More").font(.caption2).foregroundStyle(.secondary)
+                }
+            }
+            .dashCard()
+        }
+        .task {
+            let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
+            byDate = Dictionary(uniqueKeysWithValues: all.map { ($0.date, $0) })
+        }
+    }
+
+    private func cell(week: Int, day: Int, maxT: TimeInterval) -> some View {
+        let cal = Calendar.current
+        let startOfWeek = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
+        let start = cal.date(byAdding: .weekOfYear, value: -(weeks - 1), to: startOfWeek) ?? Date()
+        let date = cal.date(byAdding: .day, value: week * 7 + day, to: start) ?? Date()
+        let key = DayLog.key(for: date)
+        let log = byDate[key]
+        let total = log?.total ?? 0
+        let future = date > Date()
+        return RoundedRectangle(cornerRadius: 3)
+            .fill(future ? Color.primary.opacity(0.02) : Color.primary.opacity(intensity(total)))
+            .frame(width: 15, height: 15)
+            .help(future ? "" : tooltip(key, log))
+    }
+
+    private func intensity(_ t: TimeInterval) -> Double {
+        switch t {
+        case 0: 0.06
+        case ..<1800: 0.25       // < 30m
+        case ..<3600: 0.45       // < 1h
+        case ..<7200: 0.7        // < 2h
+        default: 1.0
+        }
+    }
+
+    private func tooltip(_ key: String, _ day: DayLog?) -> String {
+        guard let day, day.total > 0 else { return "\(key) · nothing tracked" }
+        var s = "\(key) · \(day.total.hoursCompact) focused\nYou \(day.humanTotal.hoursCompact) · Agents \(day.agentTotal.hoursCompact)"
+        if day.tokenTotal.total > 0 { s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value" }
+        return s
     }
 }
 
