@@ -95,8 +95,8 @@ private struct PassiveView: View {
             .buttonStyle(.plain)
             .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
 
-            // Controls row — generous tap targets (whole padded square is clickable).
-            HStack(spacing: 2) {
+            // Controls row — left: actions. Right: widget controls. Generous tap targets.
+            HStack(spacing: 4) {
                 iconBtn("square.and.arrow.up", "Share card") { showShareSheet = true }
                 Menu {
                     Toggle("Launch at login", isOn: $loginEnabled)
@@ -109,13 +109,12 @@ private struct PassiveView: View {
                 .foregroundStyle(.secondary)
                 .onChange(of: loginEnabled) { _, want in loginEnabled = LoginItem.setEnabled(want) }
 
-                Divider().frame(height: 18).padding(.horizontal, 4)
-                Text("Widget").font(.caption).foregroundStyle(.secondary)
+                Spacer()
+
                 iconBtn("macwindow.on.rectangle", "Show/hide desktop widget", action: onToggleWidget)
                 iconBtn(tracker.widgetPinned ? "pin.fill" : "pin",
                         tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps",
                         tint: tracker.widgetPinned ? .accentColor : .primary) { tracker.toggleWidgetPin() }
-                Spacer()
 
                 HStack(spacing: 0) {
                     ForEach(WidgetSize.allCases) { s in
@@ -130,6 +129,7 @@ private struct PassiveView: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.secondary.opacity(0.3), lineWidth: 1))
+                .padding(.leading, 2)
             }
         }
     }

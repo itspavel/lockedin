@@ -33,6 +33,21 @@ enum ToolIcon {
         return nil
     }
 
+    private static var colorCache: [String: NSImage] = [:]
+
+    /// The tool's real app icon, in colour, sized for the menu bar.
+    static func colored(for tool: String?, size: CGFloat = 16) -> NSImage? {
+        guard let tool, let icon = icon(for: tool) else { return nil }
+        let key = "\(tool.lowercased())-\(Int(size))"
+        if let c = colorCache[key] { return c }
+        let out = NSImage(size: NSSize(width: size, height: size))
+        out.lockFocus()
+        icon.draw(in: NSRect(x: 0, y: 0, width: size, height: size))
+        out.unlockFocus()
+        colorCache[key] = out
+        return out
+    }
+
     private static var monoCache: [String: NSImage] = [:]
 
     /// A desaturated, menu-bar-sized version of the tool's icon (real logo, not colourful).

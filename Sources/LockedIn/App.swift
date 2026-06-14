@@ -81,10 +81,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        // Show the current tool's real logo (grayscale) when active and identifiable;
+        // Show the current tool's real logo, in colour, when active and identifiable;
         // otherwise a state symbol.
         if (tracker.humanActiveNow || !tracker.activeSessions.isEmpty),
-           let logo = ToolIcon.monochrome(for: tracker.currentTool, size: 16) {
+           let logo = ToolIcon.colored(for: tracker.currentTool, size: 16) {
             logo.isTemplate = false
             button.image = logo
         } else {
@@ -93,8 +93,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                      : tracker.humanActiveNow ? "circle.fill" : "circle"
             button.image = symbol(name)
         }
-        // Same format as the widget (1.4h), not h:mm — avoids "1:22 vs 1.4h" confusion.
-        button.title = " " + tracker.today.total.hoursCompact
+        // Time, plus the Claude session usage % when connected ("2h 16m · 16%").
+        var title = " " + tracker.today.total.hoursCompact
+        if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
+            title += " · \(Int(p))%"
+        }
+        button.title = title
     }
 
     private func symbol(_ name: String) -> NSImage? {
