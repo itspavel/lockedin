@@ -46,6 +46,28 @@ final class Store {
         return count
     }
 
+    /// The last `n` days (oldest → newest), loading empty logs for days with no file.
+    /// Powers the week chart and history views.
+    func recentDays(_ n: Int, endingAt date: Date = Date()) -> [DayLog] {
+        let cal = Calendar.current
+        var out: [DayLog] = []
+        for offset in stride(from: n - 1, through: 0, by: -1) {
+            guard let d = cal.date(byAdding: .day, value: -offset, to: date) else { continue }
+            out.append(load(day: DayLog.key(for: d)))
+        }
+        return out
+    }
+
+    /// Every saved day (newest first). Powers the all-time totals and reports.
+    func allDays() -> [DayLog] {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return [] }
+        return files
+            .filter { $0.pathExtension == "json" }
+            .compactMap { try? Data(contentsOf: $0) }
+            .compactMap { try? JSONDecoder().decode(DayLog.self, from: $0) }
+            .sorted { $0.date > $1.date }
+    }
+
     /// Lifetime total seconds for a project across all saved days.
     func lifetimeTotal(project: String) -> TimeInterval {
         guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return 0 }

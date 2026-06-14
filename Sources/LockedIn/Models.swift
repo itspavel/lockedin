@@ -68,6 +68,55 @@ struct DayLog: Codable {
     }
 }
 
+/// A thing the desktop widget can show. The user picks which ones, in order, from the app.
+enum WidgetComponent: String, CaseIterable, Codable, Identifiable {
+    case total, split, projects, agents, tokens, keystrokes, streak
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .total: "Focused total"
+        case .split: "Human / agent split"
+        case .projects: "Projects"
+        case .agents: "Active agents"
+        case .tokens: "Tokens & cost"
+        case .keystrokes: "Typed vs generated"
+        case .streak: "Streak"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .total: "clock"
+        case .split: "chart.bar.fill"
+        case .projects: "folder"
+        case .agents: "gearshape.2"
+        case .tokens: "circle.hexagongrid"
+        case .keystrokes: "keyboard"
+        case .streak: "flame"
+        }
+    }
+}
+
+/// What the desktop widget displays, configured from the dashboard. Persisted as JSON.
+struct WidgetConfig: Codable {
+    /// Components to show, in order. Default: the essentials.
+    var components: [WidgetComponent] = [.total, .split, .projects, .agents]
+    /// Projects section: false = per-project list, true = one combined summary.
+    var combineProjects: Bool = false
+
+    func isOn(_ c: WidgetComponent) -> Bool { components.contains(c) }
+
+    static func load() -> WidgetConfig {
+        guard let data = UserDefaults.standard.data(forKey: "widget.config"),
+              let cfg = try? JSONDecoder().decode(WidgetConfig.self, from: data) else { return WidgetConfig() }
+        return cfg
+    }
+    func save() {
+        if let data = try? JSONEncoder().encode(self) {
+            UserDefaults.standard.set(data, forKey: "widget.config")
+        }
+    }
+}
+
 /// Desktop widget size presets. Each shows progressively more detail.
 enum WidgetSize: String, CaseIterable, Identifiable {
     case small, medium, large, xlarge

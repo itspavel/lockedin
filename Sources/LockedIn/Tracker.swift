@@ -49,6 +49,16 @@ final class Tracker: ObservableObject {
 
     /// Characters typed in the editor today, from the extension heartbeat (counts only).
     @Published private(set) var editorKeystrokes = 0
+    /// Characters pasted or written by the AI today (large inserts).
+    @Published private(set) var editorGenerated = 0
+
+    /// Day logs for history views (week chart, calendar, reports).
+    func recentDays(_ n: Int) -> [DayLog] { store.recentDays(n) }
+    func allDays() -> [DayLog] { store.allDays() }
+
+    /// What the desktop widget shows (configured from the dashboard).
+    @Published var widgetConfig: WidgetConfig = .load()
+    func updateWidgetConfig(_ cfg: WidgetConfig) { widgetConfig = cfg; cfg.save() }
 
     private let store = Store()
     private let agents = AgentMonitor()
@@ -139,6 +149,7 @@ final class Tracker: ObservableObject {
         let editorEditing = (beat?.editing ?? false)
         let editorProject = beat.flatMap(EditorMonitor.project)
         if let k = beat?.keystrokes { editorKeystrokes = k }
+        if let g = beat?.generated { editorGenerated = g }
 
         // "Engaged in a live session": you're not typing, but a dev app/terminal is
         // frontmost and an agent worked on a project moments ago — i.e. you're reading the

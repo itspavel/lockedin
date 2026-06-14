@@ -27,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var popover: NSPopover!
     private let tracker = Tracker()
     private var widget: WidgetWindowController!
+    private var dashboard: DashboardWindowController!
     private var cancellable: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -34,6 +35,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         widget = WidgetWindowController(tracker: tracker)
         widget.restoreVisibility()
+        dashboard = DashboardWindowController(tracker: tracker)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.imagePosition = .imageLeading
@@ -44,7 +46,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         popover.behavior = .transient
         popover.contentSize = NSSize(width: 320, height: 460)
         popover.contentViewController = NSHostingController(
-            rootView: PopoverView(tracker: tracker, onToggleWidget: { [weak self] in self?.widget.toggle() })
+            rootView: PopoverView(tracker: tracker,
+                                  onToggleWidget: { [weak self] in self?.widget.toggle() },
+                                  onOpenDashboard: { [weak self] in self?.popover.performClose(nil); self?.dashboard.show() })
         )
 
         // Repaint the menu bar label on every tracker change.
@@ -52,6 +56,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             DispatchQueue.main.async { self?.refreshStatusItem() }
         }
         refreshStatusItem()
+
+        if CommandLine.arguments.contains("--dashboard") { dashboard.show() }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

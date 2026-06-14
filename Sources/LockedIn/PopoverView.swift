@@ -4,6 +4,7 @@ import SwiftUI
 struct PopoverView: View {
     @ObservedObject var tracker: Tracker
     var onToggleWidget: () -> Void = {}
+    var onOpenDashboard: () -> Void = {}
     @State private var showShareSheet = false
 
     var body: some View {
@@ -11,7 +12,8 @@ struct PopoverView: View {
             if tracker.lockActive {
                 LockedInView(tracker: tracker)
             } else {
-                PassiveView(tracker: tracker, showShareSheet: $showShareSheet, onToggleWidget: onToggleWidget)
+                PassiveView(tracker: tracker, showShareSheet: $showShareSheet,
+                            onToggleWidget: onToggleWidget, onOpenDashboard: onOpenDashboard)
             }
         }
         .padding(18)
@@ -26,6 +28,7 @@ private struct PassiveView: View {
     @ObservedObject var tracker: Tracker
     @Binding var showShareSheet: Bool
     var onToggleWidget: () -> Void = {}
+    var onOpenDashboard: () -> Void = {}
     @State private var loginEnabled = LoginItem.isEnabled
 
     var body: some View {
@@ -76,9 +79,12 @@ private struct PassiveView: View {
 
             // Row 1 — primary actions + status.
             HStack(spacing: 12) {
-                Button { showShareSheet = true } label: {
-                    Label("Share", systemImage: "square.and.arrow.up")
+                Button(action: onOpenDashboard) {
+                    Label("Dashboard", systemImage: "square.grid.2x2")
                 }
+                Button { showShareSheet = true } label: {
+                    Image(systemName: "square.and.arrow.up")
+                }.help("Share card")
                 if tracker.editorConnected {
                     Image(systemName: "bolt.horizontal.circle.fill")
                         .foregroundStyle(.green).help("Editor sensor connected")

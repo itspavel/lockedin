@@ -25,72 +25,66 @@ struct DesktopWidgetView: View {
         )
     }
 
-    // MARK: - Passive
+    // MARK: - Passive (config-driven: renders only the components the user picked)
 
     private var passiveFace: some View {
         let d = tracker.today
         return VStack(alignment: .leading, spacing: size == .small ? 7 : 10) {
             header
+            ForEach(tracker.widgetConfig.components) { comp in
+                component(comp, d)
+            }
+            if d.total == 0 && tracker.activeSessions.isEmpty {
+                Text("Start coding. This fills itself.")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+        }
+        .padding(16)
+    }
 
+    /// How many projects the list shows, by width.
+    private var projectLimit: Int {
+        switch size { case .small: 1; case .medium: 2; case .large: 3; case .xlarge: 5 }
+    }
+
+    @ViewBuilder private func component(_ c: WidgetComponent, _ d: DayLog) -> some View {
+        switch c {
+        case .total:
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(d.total.hoursCompact)
                     .font(.system(size: size == .small ? 34 : 44, weight: .heavy, design: .rounded))
                     .contentTransition(.numericText())
                 Text("focused").font(size == .small ? .caption : .callout).foregroundStyle(.secondary)
             }
-
-            SplitBar(human: d.humanTotal, agent: d.agentTotal, height: size == .small ? 10 : 12)
-
-            if size != .small {
-                HStack(spacing: 14) {
-                    LegendDot(label: "You \(d.humanTotal.hoursCompact)", hatched: false)
-                    LegendDot(label: "Agents \(d.agentTotal.hoursCompact)", hatched: true)
-                }
-            }
-
-            if size == .medium, let top = tracker.sortedProjects.first {
-                projectRow(top.name, top.time.total)
-            }
-            if size == .large {
-                ForEach(tracker.sortedProjects.prefix(3), id: \.name) { p in
-                    projectRow(p.name, p.time.total)
-                }
-            }
-            if size == .xlarge {
-                Divider().opacity(0.4)
-                ForEach(tracker.sortedProjects.prefix(5), id: \.name) { p in
-                    projectRow(p.name, p.time.total)
-                }
-                if !tracker.activeSessions.isEmpty {
-                    Divider().opacity(0.4)
-                    ForEach(Array(tracker.activeSessions.enumerated()), id: \.offset) { _, s in
-                        HStack(spacing: 6) {
-                            Circle().fill(.green).frame(width: 5, height: 5)
-                            Text(s.projectName).lineLimit(1).truncationMode(.middle)
-                            Spacer()
-                            Text("running").foregroundStyle(.tertiary)
-                        }.font(.caption2)
+        case .split:
+            VStack(alignment: .leading, spacing: 6) {
+                SplitBar(human: d.humanTotal, agent: d.agentTotal, height: size == .small ? 10 : 12)
+                if size != .small {
+                    HStack(spacing: 14) {
+                        LegendDot(label: "You \(d.humanTotal.hoursCompact)", hatched: false)
+                        LegendDot(label: "Agents \(d.agentTotal.hoursCompact)", hatched: true)
                     }
                 }
-                statsStrip(d)
             }
-
-            footer(d)
-        }
-        .padding(16)
-    }
-
-    private func projectRow(_ name: String, _ time: TimeInterval) -> some View {
-        HStack {
-            Text(name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
-            Spacer()
-            Text(time.hoursCompact).font(.callout.weight(.bold)).monospacedDigit()
-        }
-    }
-
-    /// XL-only stats: tokens + cost on top (the AI-era flex), then streak/prompts/typed.
-    private func statsStrip(_ d: DayLog) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        case .projects:
+            if tracker.widgetConfig.combineProjects {
+                projectRow("All projects", d.total)
+            } else {
+                ForEach(tracker.sortedProjects.prefix(projectLimit), id: \.name) { p in
+                    projectRow(p.name, p.time.total)
+                }
+            }
+        case .agents:
+            if !tracker.activeSessions.isEmpty {
+                HStack(spacing: 5) {
+                    Image(systemName: "gearshape.2").font(.caption2)
+                    Text(tracker.totalAgentCount > 1 ? "\(tracker.totalAgentCount) agents working"
+                                                     : "Agent on \(tracker.activeSessions.first?.projectName ?? "")")
+                        .lineLimit(1).truncationMode(.middle)
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            }
+        case .tokens:
             if d.tokenTotal.total > 0 {
                 HStack(spacing: 6) {
                     toolGlyph
@@ -98,38 +92,33 @@ struct DesktopWidgetView: View {
                     Text("·").foregroundStyle(.tertiary)
                     Text(d.costToday.usd).fontWeight(.semibold)
                 }
+                .font(.caption2).foregroundStyle(.secondary)
             }
+        case .keystrokes:
+            if tracker.editorKeystrokes > 0 || tracker.editorGenerated > 0 {
+                HStack(spacing: 6) {
+                    Image(systemName: "keyboard").font(.caption2)
+                    Text("\(tracker.editorKeystrokes) typed")
+                    if tracker.editorGenerated > 0 {
+                        Text("· \(tracker.editorGenerated) AI").foregroundStyle(.tertiary)
+                    }
+                }
+                .font(.caption2).foregroundStyle(.secondary)
+            }
+        case .streak:
             HStack(spacing: 14) {
                 if tracker.streak > 0 { Label("\(tracker.streak)d", systemImage: "flame") }
                 Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
-                if tracker.editorKeystrokes > 0 {
-                    Label("\(tracker.editorKeystrokes)", systemImage: "keyboard").help("chars typed")
-                }
             }
+            .font(.caption2).foregroundStyle(.secondary)
         }
-        .font(.caption2).foregroundStyle(.secondary)
-        .padding(.top, 2)
     }
 
-    @ViewBuilder private func footer(_ d: DayLog) -> some View {
-        if !tracker.activeSessions.isEmpty {
-            HStack(spacing: 5) {
-                Image(systemName: "gearshape.2").font(.caption2)
-                Text(tracker.totalAgentCount > 1 ? "\(tracker.totalAgentCount) agents working"
-                                                 : "Agent on \(tracker.activeSessions.first?.projectName ?? "")")
-                    .lineLimit(1).truncationMode(.middle)
-            }
-            .font(.caption2).foregroundStyle(.secondary)
-        } else if d.total == 0 {
-            Text("Start coding. This fills itself.")
-                .font(.caption2).foregroundStyle(.secondary)
-        }
-        if size == .large && tracker.editorKeystrokes > 0 {
-            HStack(spacing: 5) {
-                Image(systemName: "keyboard").font(.caption2)
-                Text("\(tracker.editorKeystrokes) chars typed")
-            }
-            .font(.caption2).foregroundStyle(.secondary)
+    private func projectRow(_ name: String, _ time: TimeInterval) -> some View {
+        HStack {
+            Text(name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
+            Spacer()
+            Text(time.hoursCompact).font(.callout.weight(.bold)).monospacedDigit()
         }
     }
 

@@ -38,6 +38,9 @@ enum Preview {
             dump(w, to: outDir.appendingPathComponent("widget-\(s.rawValue).png"))
         }
 
+        dump(DashboardView(tracker: tracker).frame(width: 1000, height: 700),
+             to: outDir.appendingPathComponent("dashboard.png"))
+
         print("rendered to \(dir)")
         exit(0)
     }

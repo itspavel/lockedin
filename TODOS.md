@@ -62,6 +62,27 @@ Sidebar tabs (all wanted for v1):
 Build the rich data layer first (Stage 1.5 below) — the dashboard is then just a reader.
 This shared data layer is also what justifies WidgetKit + iOS later.
 
+## New ideas / requirements (2026-06-15)
+- COST FRAMING: the $ shown is API-equivalent (pay-as-you-go). On a subscription you pay a
+  flat fee, so frame it as "value you got from your plan" (≈$X API value). Done on dashboard;
+  apply same wording on widget/share card.
+- CLAUDE CODE LIMITS BAR (like ClaudeUsageBar): session 5h / weekly 7d / weekly-Sonnet % used
+  + reset times. Accurate data needs the claude.ai session cookie (the reference app uses
+  "Set Session Cookie") — Claude Code doesn't expose rolling-window % locally. Approach:
+  optional "Set session cookie" in Settings → fetch usage → show limits bar on widget/menu/dash.
+- PROJECT PERSISTENCE: data is saved per day (history kept), but UI currently shows TODAY's
+  projects only. Add an all-time/aggregated Projects view (Store.allDays already supports it)
+  so every project ever worked on is listed and stays.
+- CURSOR: time IS tracked (extension + frontmost). Cursor's OWN AI tokens are NOT visible
+  (no public log) — only Claude Code tokens. Document this clearly in the app.
+- MONETIZE (later): paid tier once it's polished.
+- DESIGN (later): real visual design pass (current is functional mock).
+- AI INSIDE (later): a connected AI feature — possibly a Claude Code skill / MCP / API that
+  reads the project and surfaces insights. Shape TBD.
+- PERF: tick does 3 directory walks of ~/.claude/projects on the MAIN thread every 5s; with
+  huge logs this causes periodic micro-stutter. Fix: one shared scan, move file I/O off the
+  main actor, throttle UI updates.
+
 ## Backlog (not yet built)
 - App icon + first-run onboarding (find the menu bar item; install the Cursor extension).
 - Package Cursor extension as .vsix; publish or one-click install.
