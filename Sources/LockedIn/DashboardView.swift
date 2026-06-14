@@ -17,6 +17,16 @@ enum DashTab: String, CaseIterable, Identifiable {
     }
 }
 
+/// One consistent card style across the whole dashboard.
+extension View {
+    func dashCard(_ pad: CGFloat = 14) -> some View {
+        self.padding(pad)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.04)))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.primary.opacity(0.06)))
+    }
+}
+
 struct DashboardView: View {
     @ObservedObject var tracker: Tracker
     @State private var tab: DashTab = .dashboard
@@ -254,9 +264,7 @@ private struct ProjectDetail: View {
                 }
             }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+        .dashCard(12)
     }
 }
 
@@ -400,9 +408,7 @@ private struct SettingsTab: View {
             Text(title).font(.headline)
             content()
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+        .dashCard(16)
     }
 }
 
@@ -477,9 +483,7 @@ private struct UsageSection: View {
             }
             .font(.callout)
         }
-        .padding(14)
-        .frame(maxWidth: 620, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+        .dashCard()
     }
 
     @ViewBuilder private func bar(_ title: String, _ w: UsageWindow?) -> some View {
@@ -526,9 +530,7 @@ private struct StatusSection: View {
                     .font(.caption).foregroundStyle(.orange)
             }
         }
-        .padding(14)
-        .frame(maxWidth: 620, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+        .dashCard()
     }
 }
 
@@ -540,9 +542,7 @@ private struct StatCard: View {
             Text(value).font(.system(size: 26, weight: .heavy, design: .rounded))
             Text(detail).font(.caption2).foregroundStyle(.secondary)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(14)
-        .background(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.12)))
+        .dashCard()
     }
 }
 
