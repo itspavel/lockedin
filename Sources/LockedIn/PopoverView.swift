@@ -75,69 +75,79 @@ private struct PassiveView: View {
 
             LockInButton(tracker: tracker)
 
-            Divider().padding(.vertical, 2)
+            Divider().padding(.vertical, 4)
 
-            // Row 1 — primary actions + status.
-            HStack(spacing: 12) {
-                Button(action: onOpenDashboard) {
-                    Label("Dashboard", systemImage: "square.grid.2x2")
+            // Primary action — big, obvious, easy to hit.
+            Button(action: onOpenDashboard) {
+                HStack(spacing: 9) {
+                    Image(systemName: "square.grid.2x2")
+                    Text("Open Dashboard").fontWeight(.medium)
+                    Spacer()
+                    if tracker.streak > 0 {
+                        Label("\(tracker.streak)d", systemImage: "flame")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
                 }
-                Button { showShareSheet = true } label: {
-                    Image(systemName: "square.and.arrow.up")
-                }.help("Share card")
-                if tracker.editorConnected {
-                    Image(systemName: "bolt.horizontal.circle.fill")
-                        .foregroundStyle(.green).help("Editor sensor connected")
-                }
-                Spacer()
-                if tracker.streak > 0 {
-                    Label("\(tracker.streak)d", systemImage: "flame")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .help("\(tracker.streak)-day streak")
-                }
+                .padding(.horizontal, 12).padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
+
+            // Controls row — generous tap targets (whole padded square is clickable).
+            HStack(spacing: 2) {
+                iconBtn("square.and.arrow.up", "Share card") { showShareSheet = true }
                 Menu {
                     Toggle("Launch at login", isOn: $loginEnabled)
                     Divider()
                     Button("Quit LockedIn") { NSApp.terminate(nil) }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis").frame(width: 32, height: 30).contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton)
-                .fixedSize()
-                .foregroundStyle(.secondary)
-                .onChange(of: loginEnabled) { _, want in
-                    loginEnabled = LoginItem.setEnabled(want)
-                }
-            }
-            .buttonStyle(.plain)
+                .menuStyle(.borderlessButton).fixedSize().foregroundStyle(.secondary)
+                .onChange(of: loginEnabled) { _, want in loginEnabled = LoginItem.setEnabled(want) }
 
-            // Row 2 — desktop widget controls.
-            HStack(spacing: 12) {
+                if tracker.editorConnected {
+                    Image(systemName: "bolt.horizontal.circle.fill")
+                        .foregroundStyle(.green).help("Editor sensor connected")
+                }
+
+                Divider().frame(height: 18).padding(.horizontal, 4)
                 Text("Widget").font(.caption).foregroundStyle(.secondary)
-                Button(action: onToggleWidget) {
-                    Image(systemName: "macwindow.on.rectangle")
-                }.help("Show/hide desktop widget")
-                Button { tracker.toggleWidgetPin() } label: {
-                    Image(systemName: tracker.widgetPinned ? "pin.fill" : "pin")
-                        .foregroundStyle(tracker.widgetPinned ? Color.accentColor : .primary)
-                }.help(tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps")
+                iconBtn("macwindow.on.rectangle", "Show/hide desktop widget", action: onToggleWidget)
+                iconBtn(tracker.widgetPinned ? "pin.fill" : "pin",
+                        tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps",
+                        tint: tracker.widgetPinned ? .accentColor : .primary) { tracker.toggleWidgetPin() }
                 Spacer()
-                // S / M / L segmented size picker.
+
                 HStack(spacing: 0) {
                     ForEach(WidgetSize.allCases) { s in
                         Button { tracker.setWidgetSize(s) } label: {
                             Text(s.label).font(.caption.weight(.bold))
-                                .frame(width: 30, height: 22)
-                                .background(tracker.widgetSize == s ? Color.primary.opacity(0.12) : .clear)
+                                .frame(width: 34, height: 26)
+                                .background(tracker.widgetSize == s ? Color.primary.opacity(0.14) : .clear)
                                 .foregroundStyle(tracker.widgetSize == s ? Color.primary : .secondary)
-                        }.help("Widget size \(s.label)")
+                                .contentShape(Rectangle())
+                        }.buttonStyle(.plain).help("Widget size \(s.label)")
                     }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 7))
                 .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.secondary.opacity(0.3), lineWidth: 1))
             }
-            .buttonStyle(.plain)
         }
+    }
+
+    /// An icon button with a generous, fully-clickable hit area.
+    private func iconBtn(_ symbol: String, _ help: String, tint: Color = .primary,
+                         action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .frame(width: 32, height: 30)
+                .foregroundStyle(tint)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain).help(help)
     }
 }
 

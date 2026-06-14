@@ -8,7 +8,9 @@ import Foundation
 /// Mechanism: ~/.claude/projects/<encoded-path>/<session>.jsonl gets appended while an
 /// agent session runs. A recent file mtime == an active agent. The project is the last
 /// "cwd" value in the file (read from the tail, key extraction only).
-final class AgentMonitor {
+/// `@unchecked Sendable`: the Tracker serializes all calls (one background tick at a time
+/// via a reentrancy guard), so the internal caches/offsets are never touched concurrently.
+final class AgentMonitor: @unchecked Sendable {
     /// How fresh (seconds) a session file's mtime must be to count the agent as active.
     static let activeWindow: TimeInterval = 70
     /// How recently (seconds) a project was touched to still claim ambiguous human time.
@@ -109,9 +111,12 @@ final class AgentMonitor {
     /// whole (potentially huge) log. On first sight of a file we baseline to its current
     /// end and count only forward, so tokens accrue from app start like the time tracking.
     /// Privacy: reads usage counts, model, and cwd only — never message content.
-    func accrueTokens(into day: inout DayLog) {
+    /// Returns the token deltas (project -> model -> counts) from newly-appended lines,
+    /// for the caller to merge on the main actor. Runs off the main thread.
+    func accrueTokens() -> [String: [String: TokenCounts]] {
+        var deltas: [String: [String: TokenCounts]] = [:]
         let fm = FileManager.default
-        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return }
+        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return deltas }
         var changed = false
 
         for dir in dirs {
@@ -141,13 +146,14 @@ final class AgentMonitor {
 
                 for lineData in complete.split(separator: 0x0A) {
                     guard let (project, model, counts) = Self.parseUsage(Data(lineData)) else { continue }
-                    day.tokens[project, default: [:]][model, default: TokenCounts()].add(counts)
+                    deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
                 }
             }
         }
         if changed, let data = try? JSONEncoder().encode(offsets) {
             try? data.write(to: offsetURL)
         }
+        return deltas
     }
 
     /// Pull (project, model, token counts) from one assistant JSONL line. Returns nil for

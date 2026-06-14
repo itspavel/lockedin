@@ -136,43 +136,56 @@ final class Tracker: ObservableObject {
 
     // MARK: - Tick
 
+    private var ticking = false
+
+    /// Scheduler: the heavy file scanning runs OFF the main thread so the UI (menu bar,
+    /// popover, widget) stays responsive even with huge Claude logs. Results are applied
+    /// back on the main actor. A reentrancy guard skips a tick if the previous I/O is
+    /// still running (so calls to the monitor are never concurrent).
     private func tick() {
         rolloverIfNeeded()
+        guard !ticking else { return }
+        ticking = true
+        let agents = self.agents
+        Task.detached(priority: .utility) {
+            let (active, sessions, recent) = agents.scan()
+            let prompts = agents.promptsToday()
+            let tokenDeltas = agents.accrueTokens()
+            await MainActor.run { [weak self] in
+                self?.applyTick(active: active, sessions: sessions, recent: recent,
+                                prompts: prompts, tokenDeltas: tokenDeltas)
+                self?.ticking = false
+            }
+        }
+    }
 
+    private func applyTick(active: [AgentMonitor.ActiveAgent],
+                           sessions: [AgentMonitor.AgentSession],
+                           recent: [AgentMonitor.RecentProject],
+                           prompts: Int,
+                           tokenDeltas: [String: [String: TokenCounts]]) {
         let human = HumanMonitor.sample()
-        let (active, sessions, recent) = agents.scan()
         let beat = EditorMonitor.read()
         editorConnected = beat != nil
 
-        // The editor extension, when present, is the most trustworthy human signal:
-        // it knows the exact project and whether you're actively editing.
+        // The editor extension, when present, is the most trustworthy human signal.
         let editorEditing = (beat?.editing ?? false)
         let editorProject = beat.flatMap(EditorMonitor.project)
         if let k = beat?.keystrokes { editorKeystrokes = k }
         if let g = beat?.generated { editorGenerated = g }
 
-        // "Engaged in a live session": you're not typing, but a dev app/terminal is
-        // frontmost and an agent worked on a project moments ago — i.e. you're reading the
-        // output or thinking about the next prompt. That's real focus and used to fall
-        // through the cracks. Auto-stops ~3 min after the agent's last activity (you left).
+        // "Engaged in a live session": not typing, but a dev app is frontmost and an agent
+        // worked moments ago — you're reading output / thinking. Auto-stops when it goes cold.
         let freshestAgentAge = recent.first?.ageSeconds ?? .infinity
         let engaged = human.isDevApp && freshestAgentAge < Self.sessionHotWindow
         humanActiveNow = editorEditing || human.isActive || engaged
         activeAgents = active
         activeSessions = sessions
 
-        // Which tool is in front of you: a live Claude Code agent → Claude (it's doing the
-        // token work); else the editor the sensor reports; else the frontmost dev app.
         currentTool = !active.isEmpty ? "Claude"
             : beat?.editor ?? (human.isDevApp ? human.frontmostApp : currentTool)
 
         if humanActiveNow {
-            // Project priority for human time, all zero-permission:
-            //  1. the editor extension's exact project (knows precisely),
-            //  2. a live agent's project,
-            //  3. the most recently touched Claude project (you bounce editor<->agent),
-            //  4. the last project we attributed to (sticky within a session),
-            //  5. the frontmost app name as a last resort so time is never lost.
             let proj = editorProject
                 ?? active.first?.projectName
                 ?? recent.first?.name
@@ -183,24 +196,24 @@ final class Tracker: ObservableObject {
             today.projects[proj, default: ProjectTime()].human += Self.interval
         }
 
-        // Combined agent time: each parallel session contributes a full interval, so a
-        // project with 2 agents accrues 2× — total agent work, not wall-clock.
+        // Combined agent time: each parallel session contributes a full interval.
         for agent in active {
             today.projects[agent.projectName, default: ProjectTime()].agent
                 += Self.interval * TimeInterval(agent.agentCount)
             if currentProject == nil { currentProject = agent.projectName }
         }
 
-        // Refresh prompt count cheaply (it scans today's files; fine at 5s cadence).
-        today.prompts = agents.promptsToday()
-
-        // Accrue token usage from any newly-written agent output (incremental, cheap).
-        agents.accrueTokens(into: &today)
-
-        if human.isActive || !active.isEmpty {
-            store.save(today)
+        today.prompts = prompts
+        for (proj, models) in tokenDeltas {
+            for (model, c) in models {
+                today.tokens[proj, default: [:]][model, default: TokenCounts()].add(c)
+            }
         }
 
+        if human.isActive || !active.isEmpty {
+            let snapshot = today, store = self.store
+            Task.detached(priority: .utility) { store.save(snapshot) }   // write off-main too
+        }
         objectWillChange.send()
     }
 

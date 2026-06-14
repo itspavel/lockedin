@@ -2,7 +2,8 @@ import Foundation
 
 /// Loads and saves DayLog JSON files in Application Support.
 /// One file per day: ~/Library/Application Support/LockedIn/days/2026-06-12.json
-final class Store {
+/// `Sendable`: only immutable state (the directory URL); all I/O is stateless file reads/writes.
+final class Store: @unchecked Sendable {
     private let dir: URL
 
     init() {
