@@ -87,6 +87,7 @@ struct DashboardView: View {
 
 private struct DashboardTab: View {
     @ObservedObject var tracker: Tracker
+    @State private var week: [DayLog] = []   // loaded once, not on every scroll frame
 
     var body: some View {
         let d = tracker.today
@@ -127,12 +128,13 @@ private struct DashboardTab: View {
 
             // Week chart
             Text("This week").font(.headline)
-            WeekChart(days: tracker.recentDays(7))
+            WeekChart(days: week)
 
             // Projects table
             Text("Projects").font(.headline)
             ProjectsTable(tracker: tracker)
         }
+        .onAppear { if week.isEmpty { week = tracker.recentDays(7) } }
     }
 }
 
@@ -319,11 +321,7 @@ private struct ConnectUsage: View {
 private struct UsageSection: View {
     @ObservedObject var tracker: Tracker
     @ObservedObject private var usage = UsageManager.shared
-
-    private var monthValue: Double {
-        let month = DayLog.key().prefix(7)   // "2026-06"
-        return tracker.allDays().filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
-    }
+    @State private var monthValue: Double = 0   // computed once, not per scroll frame
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -355,6 +353,10 @@ private struct UsageSection: View {
         .padding(14)
         .frame(maxWidth: 620, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+        .onAppear {
+            let month = DayLog.key().prefix(7)
+            monthValue = tracker.allDays().filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
+        }
     }
 
     @ViewBuilder private func bar(_ title: String, _ w: UsageWindow?) -> some View {
