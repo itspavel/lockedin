@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import UserNotifications
 
 /// Live Anthropic/Claude service status from the public status page (no auth, no cookie).
@@ -103,10 +104,12 @@ final class StatusMonitor: ObservableObject {
 
     private func notify(_ title: String, _ body: String) {
         guard notifyOnOutage else { return }
-        let c = UNMutableNotificationContent()
-        c.title = title; c.body = body
-        UNUserNotificationCenter.current().add(
-            UNNotificationRequest(identifier: UUID().uuidString, content: c, trigger: nil))
+        Notifier.send(title, body)
+    }
+
+    /// Fire a sample notification so the user can confirm alerts work.
+    func sendTest() {
+        Notifier.send("LockedIn alerts are on", "You'll be notified when a tracked Claude service goes down.")
     }
 
     private static func loadTracked() -> Set<String> {

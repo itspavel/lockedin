@@ -38,7 +38,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget.restoreVisibility()
         dashboard = DashboardWindowController(tracker: tracker)
 
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
         StatusMonitor.shared.start()
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -62,6 +61,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshStatusItem()
 
         if CommandLine.arguments.contains("--dashboard") { dashboard.show() }
+        if CommandLine.arguments.contains("--test-notif") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) { StatusMonitor.shared.sendTest() }
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

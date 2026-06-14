@@ -218,6 +218,7 @@ private struct SettingsTab: View {
                 Toggle("Notify me when a service goes down", isOn: Binding(
                     get: { StatusMonitor.shared.notifyOnOutage },
                     set: { StatusMonitor.shared.notifyOnOutage = $0 }))
+                Button("Send test notification") { StatusMonitor.shared.sendTest() }
                 Text("Tick the services you use — only these trigger alerts.")
                     .font(.caption).foregroundStyle(.secondary)
                 ForEach(StatusMonitor.shared.services) { s in
