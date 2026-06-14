@@ -44,7 +44,7 @@ final class UsageManager: ObservableObject {
         connected = (sessionKey?.isEmpty == false)
         guard connected else { return }
         Task { await refresh() }
-        let t = Timer(timeInterval: 120, repeats: true) { [weak self] _ in Task { await self?.refresh() } }   // every 2 min
+        let t = Timer(timeInterval: 60, repeats: true) { [weak self] _ in Task { await self?.refresh() } }   // every 1 min
         RunLoop.main.add(t, forMode: .common)
         timer = t
     }

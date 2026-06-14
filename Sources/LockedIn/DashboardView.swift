@@ -20,8 +20,7 @@ enum DashTab: String, CaseIterable, Identifiable {
 struct DashboardView: View {
     @ObservedObject var tracker: Tracker
     @State private var tab: DashTab = .dashboard
-    // History is read off the main thread, once — so tab switches never touch disk.
-    @State private var week: [DayLog] = []
+    // Read off the main thread, once — so tab switches never touch disk.
     @State private var monthValue: Double = 0
 
     var body: some View {
@@ -34,10 +33,8 @@ struct DashboardView: View {
         }
         .frame(minWidth: 860, minHeight: 600)
         .task {
-            let w = await Task.detached(priority: .userInitiated) { Store().recentDays(7) }.value
             let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
             let month = String(DayLog.key().prefix(7))
-            week = w
             monthValue = all.filter { $0.date.hasPrefix(month) }.reduce(0) { $0 + $1.costToday }
             // Freshen live data when you open the dashboard.
             await UsageManager.shared.refresh()
@@ -86,7 +83,7 @@ struct DashboardView: View {
 
     @ViewBuilder private var content: some View {
         switch tab {
-        case .dashboard: DashboardTab(tracker: tracker, week: week, monthValue: monthValue)
+        case .dashboard: DashboardTab(tracker: tracker, monthValue: monthValue)
         case .projects: ProjectsTab(tracker: tracker)
         case .agents: AgentsTab(tracker: tracker)
         case .settings: SettingsTab(tracker: tracker)
@@ -100,7 +97,6 @@ struct DashboardView: View {
 
 private struct DashboardTab: View {
     @ObservedObject var tracker: Tracker
-    let week: [DayLog]            // pre-loaded off the main thread
     let monthValue: Double
 
     var body: some View {
@@ -139,10 +135,6 @@ private struct DashboardTab: View {
 
             // Service status
             StatusSection()
-
-            // Week chart
-            Text("This week").font(.headline)
-            WeekChart(days: week)
 
             // Projects table
             Text("Projects").font(.headline)
@@ -487,52 +479,6 @@ private struct ProjectsTable: View {
                 Divider().opacity(0.5)
             }
         }
-    }
-}
-
-private struct WeekChart: View {
-    let days: [DayLog]
-    var body: some View {
-        let maxTotal = max(days.map(\.total).max() ?? 1, 1)
-        HStack(alignment: .bottom, spacing: 10) {
-            ForEach(days, id: \.date) { day in
-                VStack(spacing: 5) {
-                    Spacer(minLength: 0)
-                    VStack(spacing: 0) {
-                        Rectangle().fill(Theme.agent.opacity(0.55))
-                            .frame(height: barHeight(day.agentTotal, maxTotal))
-                        Rectangle().fill(Theme.human)
-                            .frame(height: barHeight(day.humanTotal, maxTotal))
-                    }
-                    .frame(width: 26)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    Text(weekday(day.date)).font(.caption2).foregroundStyle(.secondary)
-                }
-                .contentShape(Rectangle())
-                .help(tooltip(day))
-            }
-        }
-        .frame(height: 150, alignment: .bottom)
-        .frame(maxWidth: 620, alignment: .leading)
-    }
-    private func barHeight(_ v: TimeInterval, _ maxTotal: TimeInterval) -> CGFloat {
-        CGFloat(v / maxTotal) * 120
-    }
-    private func weekday(_ key: String) -> String {
-        let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd"
-        guard let d = f.date(from: key) else { return "" }
-        let w = DateFormatter(); w.dateFormat = "EEE"
-        return w.string(from: d)
-    }
-    /// Hover breakdown: what that day's bar includes.
-    private func tooltip(_ day: DayLog) -> String {
-        var s = "\(day.date) · \(day.total.hoursCompact) focused\n"
-        s += "You \(day.humanTotal.hoursCompact) · Agents \(day.agentTotal.hoursCompact)"
-        if day.tokenTotal.total > 0 {
-            s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value"
-        }
-        if day.total == 0 { s = "\(day.date) · nothing tracked" }
-        return s
     }
 }
 
