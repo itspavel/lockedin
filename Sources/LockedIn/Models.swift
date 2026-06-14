@@ -130,10 +130,12 @@ enum WidgetSize: String, CaseIterable, Identifiable {
 }
 
 extension TimeInterval {
-    /// "5.2h" style used on big numbers and share cards.
+    /// Minutes under an hour ("42m"), then hours + minutes above ("1h 22m", "2h").
     var hoursCompact: String {
-        let h = self / 3600
-        return h >= 10 ? String(format: "%.0fh", h) : String(format: "%.1fh", h)
+        let totalMin = Int((self / 60).rounded())
+        if totalMin < 60 { return "\(totalMin)m" }
+        let h = totalMin / 60, m = totalMin % 60
+        return m == 0 ? "\(h)h" : String(format: "%dh %02dm", h, m)
     }
     /// "3:42" style used in the menu bar (hours:minutes).
     var clockCompact: String {

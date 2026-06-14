@@ -119,6 +119,9 @@ private struct DashboardTab: View {
                          value: "\(d.lockSessionsCompleted)", detail: "completed today")
             }
 
+            // Service status
+            StatusSection()
+
             // Week chart
             Text("This week").font(.headline)
             WeekChart(days: tracker.recentDays(7))
@@ -211,6 +214,27 @@ private struct SettingsTab: View {
                     set: { _ in tracker.toggleWidgetPin() }))
             }
 
+            section("Claude status alerts") {
+                Toggle("Notify me when a service goes down", isOn: Binding(
+                    get: { StatusMonitor.shared.notifyOnOutage },
+                    set: { StatusMonitor.shared.notifyOnOutage = $0 }))
+                Text("Tick the services you use — only these trigger alerts.")
+                    .font(.caption).foregroundStyle(.secondary)
+                ForEach(StatusMonitor.shared.services) { s in
+                    Toggle(isOn: Binding(
+                        get: { StatusMonitor.shared.tracked.contains(s.name) },
+                        set: { on in
+                            if on { StatusMonitor.shared.tracked.insert(s.name) }
+                            else { StatusMonitor.shared.tracked.remove(s.name) }
+                        })) {
+                        HStack(spacing: 8) {
+                            Circle().fill(s.color).frame(width: 7, height: 7)
+                            Text(s.name)
+                        }
+                    }
+                }
+            }
+
             section("General") {
                 Toggle("Launch at login", isOn: $loginEnabled)
                     .onChange(of: loginEnabled) { _, want in loginEnabled = LoginItem.setEnabled(want) }
@@ -246,6 +270,40 @@ private struct SettingsTab: View {
 }
 
 // MARK: - Shared pieces
+
+private struct StatusSection: View {
+    @ObservedObject private var status = StatusMonitor.shared
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Text("Claude status").font(.headline)
+                Circle().fill(status.allOperational ? .green : .orange).frame(width: 8, height: 8)
+                Text(status.summary).font(.caption).foregroundStyle(.secondary)
+                Spacer()
+                if let t = status.lastChecked {
+                    Text("checked \(t.formatted(date: .omitted, time: .shortened))")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
+            ForEach(status.services) { s in
+                HStack(spacing: 8) {
+                    Circle().fill(s.color).frame(width: 7, height: 7)
+                    Text(s.name).font(.callout)
+                    Spacer()
+                    Text(s.isOK ? "Operational" : s.label)
+                        .font(.caption).foregroundStyle(s.isOK ? .secondary : .primary)
+                }
+            }
+            ForEach(status.incidents, id: \.self) { inc in
+                Label(inc, systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: 620, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 12).fill(Color.primary.opacity(0.04)))
+    }
+}
 
 private struct StatCard: View {
     let icon: String, label: String, value: String, detail: String
