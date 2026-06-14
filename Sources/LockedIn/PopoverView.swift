@@ -105,13 +105,9 @@ private struct PassiveView: View {
                 } label: {
                     Image(systemName: "ellipsis").frame(width: 32, height: 30).contentShape(Rectangle())
                 }
-                .menuStyle(.borderlessButton).fixedSize().foregroundStyle(.secondary)
+                .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize()
+                .foregroundStyle(.secondary)
                 .onChange(of: loginEnabled) { _, want in loginEnabled = LoginItem.setEnabled(want) }
-
-                if tracker.editorConnected {
-                    Image(systemName: "bolt.horizontal.circle.fill")
-                        .foregroundStyle(.green).help("Editor sensor connected")
-                }
 
                 Divider().frame(height: 18).padding(.horizontal, 4)
                 Text("Widget").font(.caption).foregroundStyle(.secondary)
@@ -235,9 +231,9 @@ private struct AgentRunningRow: View {
                 }
             }
         }
-        .padding(.horizontal, 10).padding(.vertical, 6)
+        .padding(.horizontal, 10).padding(.vertical, 7)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(.secondary.opacity(0.4), style: StrokeStyle(lineWidth: 1, dash: [3])))
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.05)))
     }
 }
 

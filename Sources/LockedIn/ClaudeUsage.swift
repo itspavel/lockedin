@@ -35,7 +35,9 @@ final class UsageManager: ObservableObject {
     }
 
     private var timer: Timer?
-    private var sessionKey: String? { Keychain.get(cookieKey) }
+    // Stored in app prefs (not Keychain) so it survives rebuilds with no prompt. It's a
+    // personal token on your own Mac; hardens to Keychain when the app is signed for release.
+    private var sessionKey: String? { UserDefaults.standard.string(forKey: cookieKey) }
 
     func start() {
         timer?.invalidate()
@@ -51,7 +53,8 @@ final class UsageManager: ObservableObject {
     /// the sessionKey value (stored in Keychain — never the rest of the cookie).
     func connect(_ raw: String) {
         let key = Self.extractSessionKey(raw)
-        Keychain.set(key.isEmpty ? nil : key, for: cookieKey)
+        if key.isEmpty { UserDefaults.standard.removeObject(forKey: cookieKey) }
+        else { UserDefaults.standard.set(key, forKey: cookieKey) }
         connected = !key.isEmpty
         if connected { start() } else { session = nil; weekly = nil; weeklySonnet = nil }
     }
@@ -66,7 +69,7 @@ final class UsageManager: ObservableObject {
     }
 
     func disconnect() {
-        Keychain.set(nil, for: cookieKey)
+        UserDefaults.standard.removeObject(forKey: cookieKey)
         connected = false; session = nil; weekly = nil; weeklySonnet = nil; error = nil
     }
 

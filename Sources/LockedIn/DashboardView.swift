@@ -334,7 +334,7 @@ private struct ConnectUsage: View {
                     Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                 }
             } else {
-                Text("Paste your whole claude.ai Cookie (or just the sessionKey). Only the sessionKey is kept, in your Keychain.")
+                Text("Paste your whole claude.ai Cookie (or just the sessionKey). Only the sessionKey is kept, stored locally on this Mac.")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     TextField("paste cookie or sessionKey…", text: $key)
