@@ -109,6 +109,23 @@ private struct DashboardTab: View {
     @ObservedObject var tracker: Tracker
     let monthValue: Double
     @State private var git: GitOutput?
+    @State private var weekHuman: TimeInterval = 0
+    @State private var weekDaysActive = 0
+
+    /// "1 : 2.3" — your focused time vs agent time.
+    private func ratio(_ human: TimeInterval, _ agent: TimeInterval) -> String {
+        if human <= 0 && agent <= 0 { return "—" }
+        if human <= 0 { return "0 : 1" }
+        let r = agent / human
+        return "1 : " + String(format: r < 10 ? "%.1f" : "%.0f", r)
+    }
+
+    /// The busiest hour today, as "2pm" (or "—" with no data).
+    private func peakLabel(_ hourly: [Int: TimeInterval]) -> String {
+        guard let h = hourly.filter({ $0.value > 0 }).max(by: { $0.value < $1.value })?.key else { return "—" }
+        let h12 = h % 12 == 0 ? 12 : h % 12
+        return "\(h12)\(h < 12 ? "am" : "pm")"
+    }
 
     var body: some View {
         let d = tracker.today
@@ -164,6 +181,26 @@ private struct DashboardTab: View {
 
             // When you do your focused work today
             RhythmCard(hourly: d.hourly)
+
+            // Derived insights
+            Text("Insights").font(.headline)
+            let cols2 = [GridItem(.adaptive(minimum: 180), spacing: 12)]
+            LazyVGrid(columns: cols2, spacing: 12) {
+                StatCard(icon: "calendar", label: "This week", value: weekHuman.hoursCompact,
+                         detail: "\(weekDaysActive) active day\(weekDaysActive == 1 ? "" : "s")")
+                StatCard(icon: "chart.bar", label: "Daily average",
+                         value: (weekDaysActive > 0 ? weekHuman / Double(weekDaysActive) : 0).hoursCompact,
+                         detail: "focused, this week")
+                StatCard(icon: "person.2", label: "Human : Agent",
+                         value: ratio(d.humanTotal, d.agentTotal), detail: "your time vs agents today")
+                StatCard(icon: "sun.max", label: "Peak hour",
+                         value: peakLabel(d.hourly), detail: "most focused today")
+            }
+            .task {
+                let week = await Task.detached(priority: .utility) { Store().recentDays(7) }.value
+                weekHuman = week.reduce(0) { $0 + $1.humanTotal }
+                weekDaysActive = week.filter { $0.humanTotal > 0 }.count
+            }
 
             // Claude usage limits + ROI
             UsageSection(monthValue: monthValue)
