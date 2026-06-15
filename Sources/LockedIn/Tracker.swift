@@ -64,6 +64,18 @@ final class Tracker: ObservableObject {
     @Published var widgetConfig: WidgetConfig = .load()
     func updateWidgetConfig(_ cfg: WidgetConfig) { widgetConfig = cfg; cfg.save() }
 
+    /// Tracking sensitivity. Strict = focus counts only on real input (typing/clicking in a
+    /// dev app). Engaged (default) also counts reading/thinking while a dev app is frontmost
+    /// and an agent ran in the last few minutes.
+    @Published var strictFocus: Bool = UserDefaults.standard.bool(forKey: "track.strict") {
+        didSet { UserDefaults.standard.set(strictFocus, forKey: "track.strict") }
+    }
+    /// Input older than this (seconds) counts as idle. Default 120.
+    @Published var idleCutoff: TimeInterval =
+        (UserDefaults.standard.object(forKey: "track.idleCutoff") as? Double) ?? 120 {
+        didSet { UserDefaults.standard.set(idleCutoff, forKey: "track.idleCutoff") }
+    }
+
     private let store = Store()
     private let agents = AgentMonitor()
     private var timer: Timer?
@@ -181,8 +193,10 @@ final class Tracker: ObservableObject {
         // "Engaged in a live session": not typing, but a dev app is frontmost and an agent
         // worked moments ago — you're reading output / thinking. Auto-stops when it goes cold.
         let freshestAgentAge = recent.first?.ageSeconds ?? .infinity
-        let engaged = human.isDevApp && freshestAgentAge < Self.sessionHotWindow
-        humanActiveNow = editorEditing || human.isActive || engaged
+        let inputActive = human.isDevApp && human.idleSeconds < idleCutoff
+        // The "engaged" grace (reading/thinking during an agent run) only applies off strict mode.
+        let engaged = !strictFocus && human.isDevApp && freshestAgentAge < Self.sessionHotWindow
+        humanActiveNow = editorEditing || inputActive || engaged
         activeAgents = active
         activeSessions = sessions
 
@@ -220,7 +234,7 @@ final class Tracker: ObservableObject {
             }
         }
 
-        if human.isActive || !active.isEmpty {
+        if inputActive || !active.isEmpty {
             let snapshot = today, store = self.store
             Task.detached(priority: .utility) { store.save(snapshot) }   // write off-main too
         }

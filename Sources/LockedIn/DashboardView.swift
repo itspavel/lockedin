@@ -361,6 +361,31 @@ private struct SettingsTab: View {
         VStack(alignment: .leading, spacing: 22) {
             Text("Settings").font(.largeTitle.weight(.bold))
 
+            section("Time tracking") {
+                Picker("Count focus when", selection: Binding(
+                    get: { tracker.strictFocus }, set: { tracker.strictFocus = $0 })) {
+                    Text("Engaged").tag(false)
+                    Text("Strict").tag(true)
+                }.pickerStyle(.segmented)
+                Text(tracker.strictFocus
+                     ? "Strict — counts focus only while you're actually typing or clicking in a dev app. Reading an agent's output doesn't count."
+                     : "Engaged — also counts reading and thinking while a dev app is frontmost and an agent ran in the last few minutes. Friendlier, slightly higher numbers.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Divider().padding(.vertical, 4)
+                HStack {
+                    Text("Idle timeout").font(.callout)
+                    Spacer()
+                    Text("\(Int(tracker.idleCutoff))s").monospacedDigit().foregroundStyle(.secondary)
+                }
+                Slider(value: Binding(get: { tracker.idleCutoff }, set: { tracker.idleCutoff = $0 }),
+                       in: 30...300, step: 15)
+                Text("After this long with no keyboard or mouse input, you're marked idle and the clock pauses.")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             section("Desktop widget") {
                 // Live preview — updates as you change size and toggles.
                 HStack {
