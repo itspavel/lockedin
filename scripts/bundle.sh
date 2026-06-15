@@ -15,6 +15,11 @@ rm -rf "$BUNDLE"
 mkdir -p "$BUNDLE/Contents/MacOS" "$BUNDLE/Contents/Resources"
 cp ".build/release/$APP" "$BUNDLE/Contents/MacOS/$APP"
 
+# App icon (generate with scripts/make_icon.py; committed to Resources/).
+if [ -f "Resources/AppIcon.icns" ]; then
+  cp "Resources/AppIcon.icns" "$BUNDLE/Contents/Resources/AppIcon.icns"
+fi
+
 cat > "$BUNDLE/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -27,6 +32,8 @@ cat > "$BUNDLE/Contents/Info.plist" <<PLIST
   <key>CFBundleShortVersionString</key><string>0.1</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleExecutable</key><string>$APP</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
+  <key>CFBundleIconName</key><string>AppIcon</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
   <key>LSUIElement</key><true/>
   <key>NSHumanReadableCopyright</key><string>Stage 1 prototype</string>
