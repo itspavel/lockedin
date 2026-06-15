@@ -30,22 +30,63 @@ struct DesktopWidgetView: View {
 
     private var passiveFace: some View {
         let d = tracker.today
-        return VStack(alignment: .leading, spacing: size == .small ? 7 : 10) {
+        return VStack(alignment: .leading, spacing: size == .small ? 9 : 13) {
             header
-            ForEach(tracker.widgetConfig.components) { comp in
-                component(comp, d)
+            ForEach(Array(visibleSections(d).enumerated()), id: \.offset) { _, sec in
+                if let h = sec.header {
+                    Divider().opacity(0.35)
+                    if size != .small {
+                        Text(h.uppercased()).font(.system(size: 9, weight: .bold)).tracking(1.3)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                VStack(alignment: .leading, spacing: size == .small ? 7 : 9) {
+                    ForEach(sec.comps, id: \.self) { component($0, d) }
+                }
             }
             if d.total == 0 && tracker.activeSessions.isEmpty {
                 Text("Start coding. This fills itself.")
                     .font(.caption2).foregroundStyle(.secondary)
             }
         }
-        .padding(16)
+        .padding(size == .small ? 15 : 18)
+    }
+
+    /// Logical groups, in order. Components keep their on/off from config; here we just
+    /// arrange the enabled-and-non-empty ones into sections so the widget reads as blocks.
+    private func visibleSections(_ d: DayLog) -> [(header: String?, comps: [WidgetComponent])] {
+        let groups: [(String?, [WidgetComponent])] = [
+            (nil, [.total, .split, .projects, .agents]),
+            ("Today's work", [.tokens, .keystrokes, .streak]),
+            ("Claude limits", [.usage]),
+        ]
+        return groups.compactMap { header, comps in
+            let on = comps.filter { tracker.widgetConfig.isOn($0) && hasContent($0, d) }
+            return on.isEmpty ? nil : (header, on)
+        }
+    }
+
+    /// Whether a component actually has something to show right now (avoids empty rows
+    /// and orphan section headers).
+    private func hasContent(_ c: WidgetComponent, _ d: DayLog) -> Bool {
+        switch c {
+        case .total, .split, .projects, .streak: true
+        case .agents: !tracker.activeSessions.isEmpty
+        case .tokens: d.tokenTotal.total > 0
+        case .keystrokes: tracker.editorKeystrokes > 0 || tracker.editorGenerated > 0
+        case .usage: usage.connected
+        }
     }
 
     /// How many projects the list shows, by width.
     private var projectLimit: Int {
         switch size { case .small: 1; case .medium: 2; case .large: 3; case .xlarge: 5 }
+    }
+
+    /// A leading icon in a fixed-width cell so all meta rows line up.
+    private func iconCell(_ system: String) -> some View {
+        Image(systemName: system).font(.caption2).foregroundStyle(.secondary)
+            .frame(width: 16, alignment: .center)
     }
 
     @ViewBuilder private func component(_ c: WidgetComponent, _ d: DayLog) -> some View {
@@ -76,57 +117,50 @@ struct DesktopWidgetView: View {
                 }
             }
         case .agents:
-            if !tracker.activeSessions.isEmpty {
-                HStack(spacing: 5) {
-                    Image(systemName: "gearshape.2").font(.caption2)
-                    Text(tracker.totalAgentCount > 1 ? "\(tracker.totalAgentCount) agents working"
-                                                     : "Agent on \(tracker.activeSessions.first?.projectName ?? "")")
-                        .lineLimit(1).truncationMode(.middle)
-                }
-                .font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                iconCell("gearshape.2")
+                Text(tracker.totalAgentCount > 1 ? "\(tracker.totalAgentCount) agents working"
+                                                 : "Agent on \(tracker.activeSessions.first?.projectName ?? "")")
+                    .lineLimit(1).truncationMode(.middle)
+                Spacer(minLength: 0)
             }
+            .font(.caption2).foregroundStyle(.secondary)
         case .tokens:
-            if d.tokenTotal.total > 0 {
-                HStack(spacing: 6) {
-                    toolGlyph
-                    Text("\(d.tokenTotal.total.tokensCompact) tokens")
-                    Text("·").foregroundStyle(.tertiary)
-                    Text(d.costToday.usd).fontWeight(.semibold)
-                }
-                .font(.caption2).foregroundStyle(.secondary)
+            HStack(spacing: 8) {
+                toolGlyph.frame(width: 16)
+                Text("\(d.tokenTotal.total.tokensCompact) tokens")
+                Spacer(minLength: 4)
+                Text(d.costToday.usd).fontWeight(.semibold).foregroundStyle(.primary.opacity(0.8))
             }
+            .font(.caption2).foregroundStyle(.secondary)
         case .keystrokes:
-            if tracker.editorKeystrokes > 0 || tracker.editorGenerated > 0 {
-                HStack(spacing: 6) {
-                    Image(systemName: "keyboard").font(.caption2)
-                    Text("\(tracker.editorKeystrokes) typed")
-                    if tracker.editorGenerated > 0 {
-                        Text("· \(tracker.editorGenerated) AI").foregroundStyle(.tertiary)
-                    }
+            HStack(spacing: 8) {
+                iconCell("keyboard")
+                Text("\(tracker.editorKeystrokes.tokensCompact) typed")
+                if tracker.editorGenerated > 0 {
+                    Text("· \(tracker.editorGenerated.tokensCompact) AI").foregroundStyle(.tertiary)
                 }
-                .font(.caption2).foregroundStyle(.secondary)
+                Spacer(minLength: 0)
             }
+            .font(.caption2).foregroundStyle(.secondary)
         case .streak:
-            HStack(spacing: 14) {
-                if tracker.streak > 0 { Label("\(tracker.streak)d", systemImage: "flame") }
-                Label("\(d.prompts)", systemImage: "cpu").help("prompts today")
+            HStack(spacing: 16) {
+                HStack(spacing: 8) { iconCell("flame"); Text("\(tracker.streak)d streak") }
+                HStack(spacing: 8) { iconCell("cpu"); Text("\(d.prompts) prompts") }
+                Spacer(minLength: 0)
             }
             .font(.caption2).foregroundStyle(.secondary)
         case .usage:
-            if usage.connected {
-                VStack(alignment: .leading, spacing: size == .small ? 6 : 8) {
-                    Divider().opacity(0.4)
-                    usageBar("Session", usage.session)
-                    if size != .small { usageBar("Weekly", usage.weekly) }
-                    if let r = usage.session?.resetsAt {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.clockwise").font(.system(size: 8, weight: .semibold))
-                            Text("resets \(r.untilCompact)")
-                        }
-                        .font(.caption2).foregroundStyle(.tertiary)
+            VStack(alignment: .leading, spacing: size == .small ? 6 : 9) {
+                usageBar("Session", usage.session)
+                if size != .small { usageBar("Weekly", usage.weekly) }
+                if let r = usage.session?.resetsAt {
+                    HStack(spacing: 5) {
+                        Image(systemName: "arrow.clockwise").font(.system(size: 8, weight: .semibold))
+                        Text("Session resets \(r.untilCompact)")
                     }
+                    .font(.caption2).foregroundStyle(.tertiary)
                 }
-                .padding(.top, 2)
             }
         }
     }
@@ -135,20 +169,20 @@ struct DesktopWidgetView: View {
     private func usageBar(_ label: String, _ w: UsageWindow?) -> some View {
         let pct = w?.percent ?? 0
         let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : .primary
-        return HStack(spacing: 8) {
-            Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                .frame(width: 52, alignment: .leading)
+        return HStack(spacing: 9) {
+            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                .frame(width: 56, alignment: .leading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.12))
                     Capsule().fill(fill.opacity(pct >= 70 ? 0.9 : 0.8))
-                        .frame(width: max(5, geo.size.width * min(pct / 100, 1)))
+                        .frame(width: max(7, geo.size.width * min(pct / 100, 1)))
                 }
             }
-            .frame(height: 5)
-            Text("\(Int(pct))%").font(.caption2.weight(.semibold)).monospacedDigit()
-                .foregroundStyle(pct >= 90 ? .red : .secondary)
-                .frame(width: 32, alignment: .trailing)
+            .frame(height: 7)
+            Text("\(Int(pct))%").font(.caption.weight(.bold)).monospacedDigit()
+                .foregroundStyle(pct >= 90 ? .red : .primary.opacity(0.85))
+                .frame(width: 38, alignment: .trailing)
         }
     }
 
