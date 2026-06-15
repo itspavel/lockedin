@@ -132,7 +132,18 @@ final class UsageManager: ObservableObject {
         let raw = (d["utilization"] as? Double) ?? Double(d["utilization"] as? Int ?? 0)
         let pct = raw <= 1.0 ? raw * 100 : raw
         var reset: Date?
-        if let s = d["resets_at"] as? String { reset = ISO8601DateFormatter().date(from: s) }
+        if let s = d["resets_at"] as? String { reset = Self.parseDate(s) }
         return UsageWindow(percent: pct, resetsAt: reset)
+    }
+
+    /// claude.ai timestamps come with fractional seconds; the default ISO8601 formatter
+    /// rejects those. Try the fractional variant first, then plain.
+    private static func parseDate(_ s: String) -> Date? {
+        let withFrac = ISO8601DateFormatter()
+        withFrac.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let d = withFrac.date(from: s) { return d }
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: s)
     }
 }
