@@ -35,36 +35,26 @@ private struct PassiveView: View {
         let d = tracker.today
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(tracker.hasSessionWindow ? "This session" : "Today").font(.headline)
+                Text("Today").font(.headline)
                 Spacer()
                 LiveBadge(active: tracker.humanActiveNow || !tracker.activeAgents.isEmpty)
             }
 
-            // The one dominant number — YOUR focused time, scoped to the current Claude
-            // session window when connected (else today). Agents/details shown below.
+            // The one dominant number — YOUR focused time today (midnight–midnight).
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(tracker.headlineFocused.hoursCompact)
+                Text(d.humanTotal.hoursCompact)
                     .font(.system(size: 38, weight: .heavy, design: .rounded))
                     .fixedSize()                       // never truncate the headline number
                     .contentTransition(.numericText())
                 Text("focused").font(.callout).foregroundStyle(.secondary).fixedSize()
-                Spacer(minLength: 6)
-                if tracker.hasSessionWindow, let r = tracker.sessionResetsAt {
-                    Text("resets \(r.untilCompact)")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1).layoutPriority(-1)
-                } else if d.agentTotal > 0 {
+                if d.agentTotal > 0 {
+                    Spacer(minLength: 6)
                     Text("+ \(d.agentTotal.hoursCompact) agents")
                         .font(.caption).foregroundStyle(.secondary)
                         .lineLimit(1).layoutPriority(-1)
                 }
             }
 
-            // Below the session highlight, the day's breakdown (split + projects) — always today.
-            if tracker.hasSessionWindow {
-                Divider().padding(.vertical, 2)
-                Text("Today").font(.subheadline.weight(.semibold)).foregroundStyle(.secondary)
-            }
             SplitBar(human: d.humanTotal, agent: d.agentTotal)
             HStack(spacing: 16) {
                 LegendDot(label: "You \(d.humanTotal.hoursCompact)", hatched: false)
