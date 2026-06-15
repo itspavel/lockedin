@@ -592,6 +592,7 @@ private struct StatCard: View {
 /// 24-hour strip of YOUR focused time — shows the shape of your day and your peak hour.
 private struct RhythmCard: View {
     let hourly: [Int: TimeInterval]
+    @State private var hoveredHour: Int?
 
     private var peak: Int? {
         hourly.filter { $0.value > 0 }.max { $0.value < $1.value }?.key
@@ -625,13 +626,28 @@ private struct RhythmCard: View {
                     ForEach(0..<24, id: \.self) { h in
                         let v = hourly[h] ?? 0
                         VStack(spacing: 0) {
+                            Spacer(minLength: 0)
                             RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .fill(h == peak ? Theme.accent : Theme.human.opacity(v > 0 ? 0.55 : 0.08))
+                                .fill(h == peak ? Theme.accent
+                                                : Theme.human.opacity(hoveredHour == h ? 0.85 : (v > 0 ? 0.55 : 0.08)))
                                 .frame(height: max(3, CGFloat(v / maxVal) * 56))
                         }
-                        .frame(maxWidth: .infinity)
-                        .help(v > 0 ? "\(hourLabel(h))–\(hourLabel((h + 1) % 24)) · \(v.hoursCompact) focused"
-                                    : "\(hourLabel(h))–\(hourLabel((h + 1) % 24)) · no focus")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .contentShape(Rectangle())   // whole column is hoverable, not just the bar
+                        .onHover { inside in
+                            if inside { hoveredHour = h } else if hoveredHour == h { hoveredHour = nil }
+                        }
+                        .popover(isPresented: Binding(get: { hoveredHour == h },
+                                                      set: { if !$0 && hoveredHour == h { hoveredHour = nil } }),
+                                 arrowEdge: .top) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("\(hourLabel(h))–\(hourLabel((h + 1) % 24))").font(.callout.weight(.bold))
+                                Text(v > 0 ? "\(v.hoursCompact) focused" : "No focus this hour")
+                                    .font(.caption).foregroundStyle(.secondary)
+                                if h == peak { Label("Peak hour", systemImage: "flame.fill").font(.caption2).foregroundStyle(Theme.accent) }
+                            }
+                            .padding(11)
+                        }
                     }
                 }
                 .frame(height: 56)
@@ -691,6 +707,7 @@ private struct ProjectsTable: View {
 
 private struct CalendarTab: View {
     @State private var byDate: [String: DayLog] = [:]
+    @State private var hovered: String?
     private let weeks = 18
 
     var body: some View {
@@ -699,7 +716,6 @@ private struct CalendarTab: View {
             Text("Your focus over time — each square is a day, brighter means more work. Hover for details.")
                 .foregroundStyle(.secondary)
 
-            let maxT = max(byDate.values.map(\.total).max() ?? 1, 1)
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .top, spacing: 3) {
                     // Weekday labels (Mon/Wed/Fri, GitHub-style) for orientation.
@@ -710,7 +726,14 @@ private struct CalendarTab: View {
                         }
                     }
                     ForEach(0..<weeks, id: \.self) { w in
-                        VStack(spacing: 3) { ForEach(0..<7, id: \.self) { d in cell(week: w, day: d, maxT: maxT) } }
+                        VStack(spacing: 3) {
+                            ForEach(0..<7, id: \.self) { d in
+                                let date = dateFor(week: w, day: d)
+                                CalCell(date: date, log: byDate[DayLog.key(for: date)],
+                                        fill: date > Date() ? 0.02 : intensity(byDate[DayLog.key(for: date)]?.humanTotal ?? 0),
+                                        future: date > Date(), hovered: $hovered)
+                            }
+                        }
                     }
                 }
                 // Legend
@@ -730,19 +753,11 @@ private struct CalendarTab: View {
         }
     }
 
-    private func cell(week: Int, day: Int, maxT: TimeInterval) -> some View {
+    private func dateFor(week: Int, day: Int) -> Date {
         let cal = Calendar.current
         let startOfWeek = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
         let start = cal.date(byAdding: .weekOfYear, value: -(weeks - 1), to: startOfWeek) ?? Date()
-        let date = cal.date(byAdding: .day, value: week * 7 + day, to: start) ?? Date()
-        let key = DayLog.key(for: date)
-        let log = byDate[key]
-        let total = log?.humanTotal ?? 0   // brightness = your focused time
-        let future = date > Date()
-        return RoundedRectangle(cornerRadius: 3)
-            .fill(future ? Color.primary.opacity(0.02) : Color.primary.opacity(intensity(total)))
-            .frame(width: 15, height: 15)
-            .help(future ? "" : tooltip(date: date, log))
+        return cal.date(byAdding: .day, value: week * 7 + day, to: start) ?? Date()
     }
 
     private func weekdayLabel(_ d: Int) -> String {
@@ -750,10 +765,6 @@ private struct CalendarTab: View {
         let cal = Calendar.current
         return cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + d) % 7]
     }
-
-    private static let dateFmt: DateFormatter = {
-        let f = DateFormatter(); f.dateFormat = "EEE, MMM d"; return f
-    }()
 
     private func intensity(_ t: TimeInterval) -> Double {
         switch t {
@@ -765,20 +776,83 @@ private struct CalendarTab: View {
         }
     }
 
-    private func tooltip(date: Date, _ day: DayLog?) -> String {
-        let head = Self.dateFmt.string(from: date)
-        guard let day, day.total > 0 else { return "\(head) · nothing tracked" }
-        var s = "\(head) · \(day.humanTotal.hoursCompact) focused"
-        if day.agentTotal > 0 { s += " · + \(day.agentTotal.hoursCompact) agents" }
-        // What you worked on that day.
-        for (name, t) in day.projects.sorted(by: { $0.value.total > $1.value.total }).prefix(4) {
-            s += "\n• \(name) — \(t.human.hoursCompact)"
-            if t.agent > 0 { s += " · +\(t.agent.hoursCompact) ag" }
-        }
-        if day.tokenTotal.total > 0 { s += "\n\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value" }
-        return s
+}
+
+/// One calendar square. Instant hover popover (no native-tooltip delay) with the day's detail.
+private struct CalCell: View {
+    let date: Date
+    let log: DayLog?
+    let fill: Double
+    let future: Bool
+    @Binding var hovered: String?
+    private var key: String { DayLog.key(for: date) }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3)
+            .fill(Color.primary.opacity(fill))
+            .frame(width: 15, height: 15)
+            .onHover { inside in
+                guard !future else { return }
+                if inside { hovered = key } else if hovered == key { hovered = nil }
+            }
+            .popover(isPresented: Binding(get: { hovered == key },
+                                          set: { if !$0 && hovered == key { hovered = nil } }),
+                     arrowEdge: .trailing) {
+                DayHoverCard(date: date, log: log)
+            }
     }
 }
+
+private struct DayHoverCard: View {
+    let date: Date
+    let log: DayLog?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(hoverDateFmt.string(from: date)).font(.callout.weight(.bold))
+            if let day = log, day.total > 0 {
+                HStack(spacing: 12) {
+                    Label(day.humanTotal.hoursCompact, systemImage: "person.fill")
+                    if day.agentTotal > 0 {
+                        Label(day.agentTotal.hoursCompact, systemImage: "gearshape.2.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .font(.caption.weight(.medium))
+
+                let top = Array(day.projects.sorted { $0.value.total > $1.value.total }.prefix(5))
+                if !top.isEmpty {
+                    Divider()
+                    ForEach(top, id: \.key) { name, t in
+                        HStack(spacing: 8) {
+                            Circle().fill(Color.primary.opacity(0.35)).frame(width: 5, height: 5)
+                            Text(name).lineLimit(1).truncationMode(.middle)
+                            Spacer(minLength: 12)
+                            Text(t.human.hoursCompact).monospacedDigit().foregroundStyle(.secondary)
+                            if t.agent > 0 {
+                                Text("+\(t.agent.hoursCompact)").monospacedDigit().foregroundStyle(.tertiary)
+                            }
+                        }
+                        .font(.caption)
+                    }
+                }
+                if day.tokenTotal.total > 0 {
+                    Divider()
+                    Text("\(day.tokenTotal.total.tokensCompact) tokens · \(day.costToday.usd) API value")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("Nothing tracked").font(.caption).foregroundStyle(.secondary)
+            }
+        }
+        .padding(13)
+        .frame(width: 230, alignment: .leading)
+    }
+}
+
+private let hoverDateFmt: DateFormatter = {
+    let f = DateFormatter(); f.dateFormat = "EEEE, MMM d"; return f
+}()
 
 // MARK: - Reports tab (all-time totals + CSV export)
 
