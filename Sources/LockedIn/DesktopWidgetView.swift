@@ -117,6 +117,10 @@ struct DesktopWidgetView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     usageBar("Session", usage.session?.percent)
                     if size != .small { usageBar("Weekly", usage.weekly?.percent) }
+                    if let r = usage.session?.resetsAt {
+                        Text("Session resets \(r.untilCompact)")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
                 }
             }
         }

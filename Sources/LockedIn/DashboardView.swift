@@ -647,12 +647,18 @@ private struct UsageSection: View {
                 Text(title).font(.callout.weight(.medium))
                 Spacer()
                 if let r = w?.resetsAt {
-                    Text("resets \(r.formatted(date: .abbreviated, time: .shortened))")
+                    Label("resets \(r.untilCompact)", systemImage: "arrow.clockwise")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
             ProgressView(value: min((w?.percent ?? 0) / 100, 1))
-            Text("\(Int(w?.percent ?? 0))% used").font(.caption2).foregroundStyle(.secondary)
+            HStack {
+                Text("\(Int(w?.percent ?? 0))% used").font(.caption2).foregroundStyle(.secondary)
+                if let r = w?.resetsAt {
+                    Spacer()
+                    Text(r.clockTime).font(.caption2).foregroundStyle(.tertiary)
+                }
+            }
         }
     }
 }
