@@ -26,6 +26,7 @@ struct PopoverView: View {
 
 private struct PassiveView: View {
     @ObservedObject var tracker: Tracker
+    @ObservedObject private var usage = UsageManager.shared
     @Binding var showShareSheet: Bool
     var onToggleWidget: () -> Void = {}
     var onOpenDashboard: () -> Void = {}
@@ -59,6 +60,18 @@ private struct PassiveView: View {
             HStack(spacing: 16) {
                 LegendDot(label: "You \(d.humanTotal.hoursCompact)", hatched: false)
                 LegendDot(label: "Agents \(d.agentTotal.hoursCompact)", hatched: true)
+            }
+
+            if usage.connected {
+                Divider().padding(.vertical, 2)
+                VStack(alignment: .leading, spacing: 5) {
+                    usageRow("Session", usage.session)
+                    usageRow("Weekly", usage.weekly)
+                    if let r = usage.session?.resetsAt {
+                        Text("Session resets \(r.untilCompact) · \(r.clockTime)")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }
             }
 
             if !tracker.sortedProjects.isEmpty {
@@ -138,6 +151,17 @@ private struct PassiveView: View {
                 .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.secondary.opacity(0.3), lineWidth: 1))
                 .padding(.leading, 2)
             }
+        }
+    }
+
+    /// A compact Claude-usage limit row: label, progress, percent.
+    private func usageRow(_ label: String, _ w: UsageWindow?) -> some View {
+        HStack(spacing: 8) {
+            Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                .frame(width: 50, alignment: .leading)
+            ProgressView(value: min((w?.percent ?? 0) / 100, 1)).frame(maxWidth: .infinity)
+            Text("\(Int(w?.percent ?? 0))%").font(.caption2).monospacedDigit()
+                .frame(width: 34, alignment: .trailing).foregroundStyle(.secondary)
         }
     }
 
