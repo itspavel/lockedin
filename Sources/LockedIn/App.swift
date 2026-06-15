@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let tracker = Tracker()
     private var widget: WidgetWindowController!
     private var dashboard: DashboardWindowController!
+    private var onboarding: OnboardingWindowController!
     private var cancellable: Any?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -65,6 +66,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if CommandLine.arguments.contains("--dashboard") { dashboard.show() }
         if CommandLine.arguments.contains("--test-notif") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { StatusMonitor.shared.sendTest() }
+        }
+
+        // First-run welcome (or forced with --onboarding).
+        onboarding = OnboardingWindowController()
+        if OnboardingWindowController.shouldShow || CommandLine.arguments.contains("--onboarding") {
+            onboarding.show(onOpenSettings: { [weak self] in self?.dashboard.show(tab: .settings) })
         }
     }
 

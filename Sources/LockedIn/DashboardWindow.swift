@@ -10,7 +10,7 @@ final class DashboardWindowController {
 
     init(tracker: Tracker) { self.tracker = tracker }
 
-    func show() {
+    func show(tab: DashTab = .dashboard) {
         if window == nil {
             let w = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
@@ -21,7 +21,7 @@ final class DashboardWindowController {
             w.isReleasedWhenClosed = false
             w.minSize = NSSize(width: 860, height: 600)
             w.center()
-            w.contentView = NSHostingView(rootView: DashboardView(tracker: tracker))
+            w.contentView = NSHostingView(rootView: DashboardView(tracker: tracker, initialTab: tab))
             window = w
         }
         NSApp.activate(ignoringOtherApps: true)

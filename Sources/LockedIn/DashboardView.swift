@@ -29,9 +29,14 @@ extension View {
 
 struct DashboardView: View {
     @ObservedObject var tracker: Tracker
-    @State private var tab: DashTab = .dashboard
+    @State private var tab: DashTab
     // Read off the main thread, once — so tab switches never touch disk.
     @State private var monthValue: Double = 0
+
+    init(tracker: Tracker, initialTab: DashTab = .dashboard) {
+        self.tracker = tracker
+        _tab = State(initialValue: initialTab)
+    }
 
     var body: some View {
         HStack(spacing: 0) {
@@ -522,6 +527,7 @@ private struct SettingsTab: View {
 private struct ConnectUsage: View {
     @ObservedObject private var usage = UsageManager.shared
     @State private var key = ""
+    @State private var showHelp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -540,8 +546,17 @@ private struct ConnectUsage: View {
                     Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                 }
             } else {
-                Text("Paste your whole claude.ai Cookie (or just the sessionKey). Only the sessionKey is kept, stored locally on this Mac.")
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("Paste your whole claude.ai Cookie (or just the sessionKey). Only the sessionKey is kept, stored locally on this Mac.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
+                    Button { showHelp = true } label: {
+                        Label("Where do I get this?", systemImage: "questionmark.circle")
+                            .font(.caption.weight(.medium)).labelStyle(.titleAndIcon)
+                    }
+                    .buttonStyle(.plain).foregroundStyle(Color.accentColor).fixedSize()
+                    .popover(isPresented: $showHelp, arrowEdge: .bottom) { CookieHelp() }
+                }
                 HStack {
                     TextField("paste cookie or sessionKey…", text: $key)
                         .textFieldStyle(.roundedBorder)
@@ -551,9 +566,44 @@ private struct ConnectUsage: View {
             Picker("Plan (for ROI)", selection: Binding(get: { usage.plan }, set: { usage.plan = $0 })) {
                 ForEach(Plan.allCases) { Text($0.label).tag($0) }
             }.pickerStyle(.segmented)
-            Text("Get the cookie: on claude.ai (logged in), open dev tools → Application/Storage → Cookies → claude.ai, copy the whole thing (or just the sessionKey), and paste it above.")
-                .font(.caption2).foregroundStyle(.tertiary)
         }
+    }
+}
+
+/// Step-by-step popover: how to find the claude.ai sessionKey cookie.
+private struct CookieHelp: View {
+    private let steps: [(String, String)] = [
+        ("globe", "Open **claude.ai** in your browser and make sure you're logged in."),
+        ("hammer", "Open Developer Tools — **⌥⌘I** (Chrome/Arc/Edge) or right-click → **Inspect**. Safari: enable the Develop menu first, then **⌥⌘I**."),
+        ("folder", "Go to the **Application** tab (Chrome/Arc/Edge) or **Storage** tab (Firefox/Safari)."),
+        ("list.bullet", "In the sidebar open **Cookies → https://claude.ai**."),
+        ("key", "Find the row named **sessionKey** and copy its **Value** (starts with `sk-ant-sid…`)."),
+        ("doc.on.clipboard", "Paste it into the field and hit **Connect**. (Pasting the whole Cookie header works too — we keep only sessionKey.)"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Get your Claude session cookie").font(.headline)
+            ForEach(Array(steps.enumerated()), id: \.offset) { i, step in
+                HStack(alignment: .top, spacing: 10) {
+                    Text("\(i + 1)").font(.caption.weight(.bold)).monospacedDigit()
+                        .frame(width: 18, height: 18)
+                        .background(Circle().fill(Color.accentColor.opacity(0.15)))
+                        .foregroundStyle(Color.accentColor)
+                    Label {
+                        Text(.init(step.1)).font(.caption).fixedSize(horizontal: false, vertical: true)
+                    } icon: {
+                        Image(systemName: step.0).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Divider()
+            Label("Stays on this Mac. It's only ever sent back to claude.ai to read your usage — never to us or anyone else.",
+                  systemImage: "lock.shield")
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(width: 360, alignment: .leading)
     }
 }
 
