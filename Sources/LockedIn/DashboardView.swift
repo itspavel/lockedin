@@ -293,16 +293,16 @@ private struct ProjectDetail: View {
 
             Text("Most active days").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
             let top = Array(p.mostActiveDays.prefix(7))
-            let maxT = top.map(\.total).max() ?? 1
+            let maxT = top.map(\.human).max() ?? 1   // your focused time, not human+agent
             ForEach(top) { d in
                 HStack(spacing: 10) {
                     Text(ProjectsTab.lastActive(d.date)).font(.caption2).foregroundStyle(.secondary)
                         .frame(width: 64, alignment: .leading)
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.primary.opacity(0.08)).frame(width: 200, height: 8)
-                        Capsule().fill(Theme.human).frame(width: max(4, 200 * CGFloat(d.total / maxT)), height: 8)
+                        Capsule().fill(Theme.human).frame(width: max(4, 200 * CGFloat(d.human / max(maxT, 1))), height: 8)
                     }
-                    Text(d.total.hoursCompact).font(.caption2).monospacedDigit()
+                    Text(d.human.hoursCompact).font(.caption2).monospacedDigit()
                         .frame(width: 56, alignment: .trailing).foregroundStyle(.secondary)
                 }
             }
@@ -753,16 +753,18 @@ private struct CalendarTab: View {
         }
     }
 
+    // Force weeks to run Monday (top) → Sunday (bottom), regardless of locale.
+    private var mondayCal: Calendar { var c = Calendar.current; c.firstWeekday = 2; return c }
+
     private func dateFor(week: Int, day: Int) -> Date {
-        let cal = Calendar.current
+        let cal = mondayCal
         let startOfWeek = cal.dateInterval(of: .weekOfYear, for: Date())?.start ?? Date()
         let start = cal.date(byAdding: .weekOfYear, value: -(weeks - 1), to: startOfWeek) ?? Date()
         return cal.date(byAdding: .day, value: week * 7 + day, to: start) ?? Date()
     }
 
     private func weekdayLabel(_ d: Int) -> String {
-        guard d % 2 == 1 else { return "" }   // only odd rows, GitHub-style
-        let cal = Calendar.current
+        let cal = mondayCal   // Mon, Tue, Wed, Thu, Fri, Sat, Sun — all rows
         return cal.shortWeekdaySymbols[(cal.firstWeekday - 1 + d) % 7]
     }
 

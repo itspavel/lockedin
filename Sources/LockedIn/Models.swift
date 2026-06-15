@@ -157,8 +157,8 @@ struct ProjectAggregate: Identifiable, Sendable {
     var total: TimeInterval { human + agent }
     var tokenTotal: Int { tokens.values.reduce(0) { $0 + $1.total } }
     var cost: Double { tokens.reduce(0) { $0 + Pricing.cost(model: $1.key, $1.value) } }
-    /// Days sorted by most active first (for "most active days").
-    var mostActiveDays: [DayPoint] { days.sorted { $0.total > $1.total } }
+    /// Days sorted by most active first (by YOUR focused time, for "most active days").
+    var mostActiveDays: [DayPoint] { days.sorted { $0.human > $1.human } }
 }
 
 /// Desktop widget size presets. Each shows progressively more detail.
