@@ -184,6 +184,9 @@ private struct DashboardTab: View {
                 }.value
             }
 
+            // AI insights (Claude reads your numbers and tells you what they mean)
+            AIInsightsCard(tracker: tracker)
+
             // When you do your focused work today
             RhythmCard(hourly: d.hourly)
 
@@ -468,6 +471,10 @@ private struct SettingsTab: View {
                 ConnectUsage()
             }
 
+            section("AI insights (beta)") {
+                ConnectAI()
+            }
+
             section("Claude status alerts") {
                 Toggle("Notify me when a service goes down", isOn: Binding(
                     get: { StatusMonitor.shared.notifyOnOutage },
@@ -607,6 +614,39 @@ private struct CookieHelp: View {
     }
 }
 
+private struct ConnectAI: View {
+    @ObservedObject private var ai = AIInsights.shared
+    @State private var key = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if ai.hasKey {
+                HStack {
+                    Label("API key set", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                    Spacer()
+                    Button("Remove") { ai.setKey("") }
+                }
+            } else {
+                HStack(spacing: 6) {
+                    Text("Paste an Anthropic API key to enable AI insights on the Dashboard.")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer(minLength: 4)
+                    Link(destination: URL(string: "https://console.anthropic.com/settings/keys")!) {
+                        Label("Get a key", systemImage: "arrow.up.right.square").font(.caption.weight(.medium))
+                    }.fixedSize()
+                }
+                HStack {
+                    TextField("sk-ant-api03-…", text: $key).textFieldStyle(.roundedBorder)
+                    Button("Save") { ai.setKey(key); key = "" }.disabled(key.isEmpty)
+                }
+            }
+            Label("Insights send aggregate numbers and project names to the Anthropic API — never your code, prompts, or message content. Each generation is a normal API call billed to your key.",
+                  systemImage: "lock.shield")
+                .font(.caption2).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
 private struct UsageSection: View {
     @ObservedObject private var usage = UsageManager.shared
     let monthValue: Double   // pre-loaded off the main thread
@@ -689,6 +729,60 @@ private struct StatusSection: View {
             ForEach(status.incidents, id: \.self) { inc in
                 Label(inc, systemImage: "exclamationmark.triangle.fill")
                     .font(.caption).foregroundStyle(.orange)
+            }
+        }
+        .dashCard()
+    }
+}
+
+/// Claude-powered insight card: one click sends a numeric summary to the Messages API
+/// and shows a few concrete observations.
+private struct AIInsightsCard: View {
+    @ObservedObject var tracker: Tracker
+    @ObservedObject private var ai = AIInsights.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Label("AI insights", systemImage: "sparkles").font(.headline)
+                Text("beta").font(.caption2.weight(.bold)).padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(Capsule().fill(Color.accentColor.opacity(0.18)))
+                    .foregroundStyle(Color.accentColor)
+                Spacer()
+                if ai.hasKey {
+                    Button {
+                        Task { await ai.generate(tracker: tracker) }
+                    } label: {
+                        Label(ai.insight == nil ? "Generate" : "Refresh",
+                              systemImage: ai.loading ? "hourglass" : "arrow.clockwise")
+                    }
+                    .disabled(ai.loading)
+                }
+            }
+
+            if !ai.hasKey {
+                Text("Let Claude read your numbers and tell you what they mean — your deep-work window, which projects are agent-heavy, pace against your limits. Add an Anthropic API key in **Settings → AI insights** to enable it.")
+                    .font(.callout).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if ai.loading {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Claude is reading your week…").foregroundStyle(.secondary)
+                }.font(.callout)
+            } else if let text = ai.insight {
+                Text(.init(text)).font(.callout).fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                if let t = ai.lastGenerated {
+                    Text("Generated \(t.formatted(date: .omitted, time: .shortened)) · numbers & project names only — no code or content sent")
+                        .font(.caption2).foregroundStyle(.tertiary)
+                }
+            } else {
+                Text("Click Generate for a read on your focus patterns, agent split, and limit pace.")
+                    .font(.callout).foregroundStyle(.secondary)
+            }
+
+            if let e = ai.error {
+                Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
             }
         }
         .dashCard()

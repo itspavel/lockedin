@@ -80,8 +80,11 @@ This shared data layer is also what justifies WidgetKit + iOS later.
   (no public log) — only Claude Code tokens. Document this clearly in the app.
 - MONETIZE (later): paid tier once it's polished.
 - DESIGN (later): real visual design pass (current is functional mock).
-- AI INSIDE (later): a connected AI feature — possibly a Claude Code skill / MCP / API that
-  reads the project and surfaces insights. Shape TBD.
+- ~~AI INSIDE: a connected AI feature.~~ (Done 2026-06-15, v1) In-app "AI insights" card on
+  the Dashboard: sends a privacy-safe numeric summary (aggregates + project names only) to
+  the Claude Messages API (claude-opus-4-8, raw HTTP — no Swift SDK) and shows concrete
+  observations. Needs a user Anthropic API key (Settings → AI insights). NEXT: streaming,
+  cache the result per day, maybe an MCP server so Claude Code can query the data too.
 - PERF: tick does 3 directory walks of ~/.claude/projects on the MAIN thread every 5s; with
   huge logs this causes periodic micro-stutter. Fix: one shared scan, move file I/O off the
   main actor, throttle UI updates.
