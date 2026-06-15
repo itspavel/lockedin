@@ -48,7 +48,7 @@ bar_mask = rounded_mask(N, bar_box, bar_r)
 
 # human portion: solid white
 human = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-ImageDraw.Draw(human).rectangle((bx0, bar_box[1], split, bar_box[3]), fill=(245, 246, 248, 255))
+ImageDraw.Draw(human).rectangle((bx0, bar_box[1], split, bar_box[3]), fill=(40, 110, 245, 255))
 # agent portion: mid-grey base + diagonal hatch, clipped to the agent rectangle only
 agent = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 ad = ImageDraw.Draw(agent)
@@ -72,7 +72,7 @@ img.paste(bar, (0, 0), Image.composite(bar_mask, Image.new("L", (N, N), 0), bar_
 tick_h = round(N * 0.028)
 tick_y = cy - bar_h // 2 - round(N * 0.10)
 widths = [0.34, 0.22, 0.13]
-shade = [(235, 236, 238), (175, 177, 184), (120, 122, 130)]
+shade = [(40, 110, 245), (150, 155, 170), (105, 108, 120)]
 tx = bx0
 for w, c in zip(widths, shade):
     tw = round((bx1 - bx0) * w)

@@ -18,6 +18,7 @@ struct PopoverView: View {
         }
         .padding(18)
         .frame(width: 320)
+        .tint(Theme.accent)
         .sheet(isPresented: $showShareSheet) {
             ShareCardSheet(tracker: tracker)
         }
@@ -134,7 +135,7 @@ private struct PassiveView: View {
                 iconBtn("macwindow.on.rectangle", "Show/hide desktop widget", action: onToggleWidget)
                 iconBtn(tracker.widgetPinned ? "pin.fill" : "pin",
                         tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps",
-                        tint: tracker.widgetPinned ? .accentColor : .primary) { tracker.toggleWidgetPin() }
+                        tint: tracker.widgetPinned ? Theme.accent : .primary) { tracker.toggleWidgetPin() }
 
                 HStack(spacing: 0) {
                     ForEach(WidgetSize.allCases) { s in
@@ -157,7 +158,7 @@ private struct PassiveView: View {
     /// A compact Claude-usage limit row: label, a capsule that warns as it fills, percent.
     private func usageRow(_ label: String, _ w: UsageWindow?) -> some View {
         let pct = w?.percent ?? 0
-        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : .primary
+        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
         return HStack(spacing: 8) {
             Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                 .frame(width: 50, alignment: .leading)
@@ -311,8 +312,8 @@ private struct LockInButton: View {
                     .padding(.vertical, 9)
             }
             .buttonStyle(.plain)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary))
-            .foregroundStyle(Color(nsColor: .windowBackgroundColor))
+            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent))
+            .foregroundStyle(.white)
         }
     }
 }

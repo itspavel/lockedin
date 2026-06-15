@@ -71,7 +71,7 @@ struct OnboardingView: View {
                 ForEach(Array(steps.enumerated()), id: \.offset) { _, s in
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: s.0).font(.title3)
-                            .foregroundStyle(Color.accentColor)
+                            .foregroundStyle(Theme.accent)
                             .frame(width: 26)
                         VStack(alignment: .leading, spacing: 2) {
                             Text(s.1).font(.callout.weight(.semibold))
@@ -93,5 +93,6 @@ struct OnboardingView: View {
         }
         .padding(26)
         .frame(width: 460)
+        .tint(Theme.accent)
     }
 }

@@ -1,10 +1,12 @@
 import SwiftUI
 
 /// Design tokens. SF Symbols only — no emoji anywhere in the UI (user rule).
+/// Restrained palette: monochrome base + a single cobalt accent. "You" (your focused
+/// time) is the hero, so it carries the accent; agents stay hatched grey.
 enum Theme {
-    static let human = Color.primary
+    static let accent = Color(red: 0.13, green: 0.42, blue: 0.95)   // cobalt
+    static let human = accent
     static let agent = Color.secondary
-    static let accent = Color.accentColor
 
     static let cardRadius: CGFloat = 16
     static let barHeight: CGFloat = 14

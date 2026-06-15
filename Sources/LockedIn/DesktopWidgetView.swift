@@ -15,6 +15,7 @@ struct DesktopWidgetView: View {
             if tracker.lockActive { lockedFace } else { passiveFace }
         }
         .frame(width: size.width)
+        .tint(Theme.accent)
         .contentShape(Rectangle())
         .gesture(
             // We ignore the translation and let the controller move the window using the
@@ -168,7 +169,7 @@ struct DesktopWidgetView: View {
     /// A refined limit bar: label, a colored capsule that warns as it fills, and the %.
     private func usageBar(_ label: String, _ w: UsageWindow?) -> some View {
         let pct = w?.percent ?? 0
-        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : .primary
+        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
         return HStack(spacing: 9) {
             Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
                 .frame(width: 56, alignment: .leading)
@@ -254,7 +255,7 @@ struct DesktopWidgetView: View {
             Button { tracker.toggleWidgetPin() } label: {
                 Image(systemName: tracker.widgetPinned ? "pin.fill" : "pin")
                     .font(.caption2)
-                    .foregroundStyle(tracker.widgetPinned ? Color.accentColor : .secondary)
+                    .foregroundStyle(tracker.widgetPinned ? Theme.accent : .secondary)
             }
             .buttonStyle(.plain)
             .help(tracker.widgetPinned ? "Pinned above apps — click to send behind"

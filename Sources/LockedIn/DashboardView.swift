@@ -22,8 +22,11 @@ extension View {
     func dashCard(_ pad: CGFloat = 14) -> some View {
         self.padding(pad)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.primary.opacity(0.04)))
-            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.primary.opacity(0.06)))
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(nsColor: .windowBackgroundColor)))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.primary.opacity(0.07)))
+            .shadow(color: .black.opacity(0.05), radius: 7, y: 2)
     }
 }
 
@@ -46,6 +49,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .textBackgroundColor))
         }
+        .tint(Theme.accent)
         .frame(minWidth: 860, minHeight: 600)
         .task {
             let all = await Task.detached(priority: .userInitiated) { Store().allDays() }.value
@@ -62,7 +66,7 @@ struct DashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
-                Image(systemName: "lock.fill")
+                Image(systemName: "lock.fill").foregroundStyle(Theme.accent)
                 Text("LockedIn").font(.headline)
             }
             .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 14)
@@ -75,8 +79,9 @@ struct DashboardView: View {
                         Spacer()
                     }
                     .padding(.horizontal, 10).padding(.vertical, 7)
+                    .foregroundStyle(tab == t ? Theme.accent : Color.primary)
                     .background(RoundedRectangle(cornerRadius: 7)
-                        .fill(tab == t ? Color.primary.opacity(0.1) : .clear))
+                        .fill(tab == t ? Theme.accent.opacity(0.14) : .clear))
                     .fontWeight(tab == t ? .semibold : .regular)
                     .contentShape(Rectangle())
                 }
@@ -561,7 +566,7 @@ private struct ConnectUsage: View {
                         Label("Where do I get this?", systemImage: "questionmark.circle")
                             .font(.caption.weight(.medium)).labelStyle(.titleAndIcon)
                     }
-                    .buttonStyle(.plain).foregroundStyle(Color.accentColor).fixedSize()
+                    .buttonStyle(.plain).foregroundStyle(Theme.accent).fixedSize()
                     .popover(isPresented: $showHelp, arrowEdge: .bottom) { CookieHelp() }
                 }
                 HStack {
@@ -595,8 +600,8 @@ private struct CookieHelp: View {
                 HStack(alignment: .top, spacing: 10) {
                     Text("\(i + 1)").font(.caption.weight(.bold)).monospacedDigit()
                         .frame(width: 18, height: 18)
-                        .background(Circle().fill(Color.accentColor.opacity(0.15)))
-                        .foregroundStyle(Color.accentColor)
+                        .background(Circle().fill(Theme.accent.opacity(0.15)))
+                        .foregroundStyle(Theme.accent)
                     Label {
                         Text(.init(step.1)).font(.caption).fixedSize(horizontal: false, vertical: true)
                     } icon: {
@@ -746,8 +751,8 @@ private struct AIInsightsCard: View {
             HStack(spacing: 8) {
                 Label("AI insights", systemImage: "sparkles").font(.headline)
                 Text("beta").font(.caption2.weight(.bold)).padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(Capsule().fill(Color.accentColor.opacity(0.18)))
-                    .foregroundStyle(Color.accentColor)
+                    .background(Capsule().fill(Theme.accent.opacity(0.18)))
+                    .foregroundStyle(Theme.accent)
                 Spacer()
                 if ai.hasKey {
                     Button {
@@ -952,7 +957,7 @@ private struct CalendarTab: View {
                 HStack(spacing: 5) {
                     Text("Less").font(.caption2).foregroundStyle(.secondary)
                     ForEach([0.06, 0.25, 0.45, 0.7, 1.0], id: \.self) { o in
-                        RoundedRectangle(cornerRadius: 3).fill(Color.primary.opacity(o)).frame(width: 13, height: 13)
+                        RoundedRectangle(cornerRadius: 3).fill(Theme.accent.opacity(o)).frame(width: 13, height: 13)
                     }
                     Text("More").font(.caption2).foregroundStyle(.secondary)
                 }
@@ -1003,7 +1008,7 @@ private struct CalCell: View {
 
     var body: some View {
         RoundedRectangle(cornerRadius: 3)
-            .fill(Color.primary.opacity(fill))
+            .fill(fill <= 0.06 ? Color.primary.opacity(0.06) : Theme.accent.opacity(fill))
             .frame(width: 15, height: 15)
             .onHover { inside in
                 guard !future else { return }
