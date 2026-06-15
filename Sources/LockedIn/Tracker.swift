@@ -26,6 +26,18 @@ final class Tracker: ObservableObject {
     @Published private(set) var streak = 0
     @Published private(set) var editorConnected = false
 
+    /// Focused (human) time within the current Claude 5-hour session window. Resets when the
+    /// window rolls over. Falls back to today's human total when no cookie is connected.
+    @Published private(set) var sessionFocused: TimeInterval = 0
+    private var sessionWindowEnd: Date?
+
+    /// Whether we have a live Claude session window to scope focused time to.
+    var hasSessionWindow: Bool { sessionWindowEnd != nil }
+    /// The headline focused number: session-scoped when a window is known, else today.
+    var headlineFocused: TimeInterval { hasSessionWindow ? sessionFocused : today.humanTotal }
+    /// When the current session window resets (subtitle under the headline).
+    var sessionResetsAt: Date? { sessionWindowEnd }
+
     // Lock In (focus) state — timer-driven so the countdown is smooth and pausable.
     @Published private(set) var lockActive = false
     @Published private(set) var lockPaused = false
@@ -74,6 +86,13 @@ final class Tracker: ObservableObject {
         dayKey = DayLog.key()
         today = store.load(day: dayKey)
         streak = store.streak(endingAt: dayKey)
+
+        // Restore session-scoped focus if its window hasn't ended yet.
+        let storedEnd = UserDefaults.standard.double(forKey: "session.windowEnd")
+        if storedEnd > 0, Date(timeIntervalSince1970: storedEnd) > Date() {
+            sessionWindowEnd = Date(timeIntervalSince1970: storedEnd)
+            sessionFocused = UserDefaults.standard.double(forKey: "session.focused")
+        }
     }
 
     func start() {
@@ -190,6 +209,8 @@ final class Tracker: ObservableObject {
         for s in sessions { projectPaths[s.projectName] = s.projectPath }
         for r in recent where !r.path.isEmpty { projectPaths[r.name] = r.path }
 
+        updateSessionFocused(humanActive: humanActiveNow)
+
         currentTool = !active.isEmpty ? "Claude"
             : beat?.editor ?? (human.isDevApp ? human.frontmostApp : currentTool)
 
@@ -225,6 +246,24 @@ final class Tracker: ObservableObject {
             Task.detached(priority: .utility) { store.save(snapshot) }   // write off-main too
         }
         objectWillChange.send()
+    }
+
+    /// Keep `sessionFocused` scoped to the live Claude 5h window. We detect a window
+    /// rollover when the API's `resets_at` jumps forward, and zero the counter then.
+    private func updateSessionFocused(humanActive: Bool) {
+        let usage = UsageManager.shared
+        if usage.connected, let end = usage.session?.resetsAt {
+            if let cur = sessionWindowEnd {
+                if end > cur.addingTimeInterval(60) { sessionFocused = 0; sessionWindowEnd = end }
+            } else {
+                sessionWindowEnd = end          // first window seen this run
+            }
+        } else if let cur = sessionWindowEnd, !usage.connected || cur < Date() {
+            sessionFocused = 0; sessionWindowEnd = nil   // disconnected or window expired
+        }
+        if humanActive, sessionWindowEnd != nil { sessionFocused += Self.interval }
+        UserDefaults.standard.set(sessionFocused, forKey: "session.focused")
+        UserDefaults.standard.set(sessionWindowEnd?.timeIntervalSince1970 ?? 0, forKey: "session.windowEnd")
     }
 
     /// At local midnight, persist and roll to a fresh day.

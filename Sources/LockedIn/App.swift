@@ -93,8 +93,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                      : tracker.humanActiveNow ? "circle.fill" : "circle"
             button.image = symbol(name)
         }
-        // Your focused time, plus the Claude session usage % when connected.
-        var title = " " + tracker.today.humanTotal.hoursCompact
+        // Focused time scoped to the current Claude session window (falls back to today's
+        // total when no cookie), plus the session usage % when connected.
+        var title = " " + tracker.headlineFocused.hoursCompact
         if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
             title += " · \(Int(p))%"
         }

@@ -192,3 +192,11 @@ extension TimeInterval {
         return String(format: "%d:%02d", s / 60, s % 60)
     }
 }
+
+extension Date {
+    /// "in 1h 50m" / "in 12m" / "now" — time from now until this date.
+    var untilCompact: String {
+        let s = timeIntervalSinceNow
+        return s <= 0 ? "now" : "in " + s.hoursCompact
+    }
+}
