@@ -114,23 +114,41 @@ struct DesktopWidgetView: View {
             .font(.caption2).foregroundStyle(.secondary)
         case .usage:
             if usage.connected {
-                VStack(alignment: .leading, spacing: 4) {
-                    usageBar("Session", usage.session?.percent)
-                    if size != .small { usageBar("Weekly", usage.weekly?.percent) }
+                VStack(alignment: .leading, spacing: size == .small ? 6 : 8) {
+                    Divider().opacity(0.4)
+                    usageBar("Session", usage.session)
+                    if size != .small { usageBar("Weekly", usage.weekly) }
                     if let r = usage.session?.resetsAt {
-                        Text("Session resets \(r.untilCompact)")
-                            .font(.caption2).foregroundStyle(.tertiary)
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.clockwise").font(.system(size: 8, weight: .semibold))
+                            Text("resets \(r.untilCompact)")
+                        }
+                        .font(.caption2).foregroundStyle(.tertiary)
                     }
                 }
+                .padding(.top, 2)
             }
         }
     }
 
-    private func usageBar(_ label: String, _ pct: Double?) -> some View {
-        HStack(spacing: 6) {
-            Text(label).font(.caption2).foregroundStyle(.secondary).frame(width: 50, alignment: .leading)
-            ProgressView(value: min((pct ?? 0) / 100, 1)).frame(maxWidth: 90)
-            Text("\(Int(pct ?? 0))%").font(.caption2).monospacedDigit().foregroundStyle(.secondary)
+    /// A refined limit bar: label, a colored capsule that warns as it fills, and the %.
+    private func usageBar(_ label: String, _ w: UsageWindow?) -> some View {
+        let pct = w?.percent ?? 0
+        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : .primary
+        return HStack(spacing: 8) {
+            Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
+                .frame(width: 52, alignment: .leading)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.12))
+                    Capsule().fill(fill.opacity(pct >= 70 ? 0.9 : 0.8))
+                        .frame(width: max(5, geo.size.width * min(pct / 100, 1)))
+                }
+            }
+            .frame(height: 5)
+            Text("\(Int(pct))%").font(.caption2.weight(.semibold)).monospacedDigit()
+                .foregroundStyle(pct >= 90 ? .red : .secondary)
+                .frame(width: 32, alignment: .trailing)
         }
     }
 

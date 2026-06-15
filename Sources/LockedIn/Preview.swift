@@ -29,6 +29,10 @@ enum Preview {
         )
         dump(card, to: outDir.appendingPathComponent("sharecard.png"))
 
+        // Show every component in the preview (in-memory only — don't persist over the
+        // user's real widget config).
+        tracker.widgetConfig = WidgetConfig(components: WidgetComponent.allCases, combineProjects: false)
+
         // Desktop widget at each size, on a dark backdrop to mimic the frosted panel.
         for s in WidgetSize.allCases {
             tracker.setWidgetSize(s)

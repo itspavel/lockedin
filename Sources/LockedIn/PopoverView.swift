@@ -154,14 +154,24 @@ private struct PassiveView: View {
         }
     }
 
-    /// A compact Claude-usage limit row: label, progress, percent.
+    /// A compact Claude-usage limit row: label, a capsule that warns as it fills, percent.
     private func usageRow(_ label: String, _ w: UsageWindow?) -> some View {
-        HStack(spacing: 8) {
+        let pct = w?.percent ?? 0
+        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : .primary
+        return HStack(spacing: 8) {
             Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
                 .frame(width: 50, alignment: .leading)
-            ProgressView(value: min((w?.percent ?? 0) / 100, 1)).frame(maxWidth: .infinity)
-            Text("\(Int(w?.percent ?? 0))%").font(.caption2).monospacedDigit()
-                .frame(width: 34, alignment: .trailing).foregroundStyle(.secondary)
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.primary.opacity(0.1))
+                    Capsule().fill(fill.opacity(pct >= 70 ? 0.9 : 0.8))
+                        .frame(width: max(5, geo.size.width * min(pct / 100, 1)))
+                }
+            }
+            .frame(height: 5)
+            Text("\(Int(pct))%").font(.caption2.weight(.semibold)).monospacedDigit()
+                .foregroundStyle(pct >= 90 ? .red : .secondary)
+                .frame(width: 34, alignment: .trailing)
         }
     }
 
