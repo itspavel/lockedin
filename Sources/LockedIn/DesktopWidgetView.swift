@@ -59,7 +59,7 @@ struct DesktopWidgetView: View {
     /// arrange the enabled-and-non-empty ones into sections so the widget reads as blocks.
     private func visibleSections(_ d: DayLog) -> [(header: String?, comps: [WidgetComponent])] {
         let groups: [(String?, [WidgetComponent])] = [
-            (nil, [.total, .split, .projects, .agents]),
+            (nil, [.total, .split, .agents]),   // project rows hidden for now
             ("Today's work", [.tokens, .keystrokes, .streak]),
             ("Claude limits", [.usage]),
         ]

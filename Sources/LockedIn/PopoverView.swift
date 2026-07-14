@@ -80,21 +80,7 @@ private struct PassiveView: View {
                 }
             }
 
-            if !tracker.sortedProjects.isEmpty {
-                Divider().padding(.vertical, 2)
-                ForEach(tracker.sortedProjects.prefix(4), id: \.name) { p in
-                    HStack(spacing: 6) {
-                        Text(p.name).lineLimit(1).truncationMode(.middle)
-                        Spacer()
-                        if p.time.agent > 0 {
-                            Text("+\(p.time.agent.hoursCompact) ag").font(.caption2)
-                                .monospacedDigit().foregroundStyle(.tertiary)
-                        }
-                        Text(p.time.human.hoursCompact).fontWeight(.semibold).monospacedDigit()
-                    }
-                    .font(.callout)
-                }
-            }
+            // Project rows hidden for now (per request).
 
             if !tracker.activeSessions.isEmpty {
                 AgentRunningRow(tracker: tracker)
