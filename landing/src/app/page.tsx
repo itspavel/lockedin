@@ -23,10 +23,10 @@ export default function Home() {
       <Stats />
       <How />
       <Split />
+      <Limits />
       <Surfaces />
       <Insights />
       <Dashboard />
-      <Limits />
       <ShareCard />
       <Social />
       <Pricing />

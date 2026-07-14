@@ -165,11 +165,10 @@ final class Tracker: ObservableObject {
         let agents = self.agents
         Task.detached(priority: .utility) {
             let (active, sessions, recent) = agents.scan()
-            let prompts = agents.promptsToday()
-            let tokenDeltas = agents.accrueTokens()
+            let accrued = agents.accrueTokens()   // (tokens, prompts) — incremental, bounded
             await MainActor.run { [weak self] in
                 self?.applyTick(active: active, sessions: sessions, recent: recent,
-                                prompts: prompts, tokenDeltas: tokenDeltas)
+                                promptDelta: accrued.prompts, tokenDeltas: accrued.tokens)
                 self?.ticking = false
             }
         }
@@ -178,7 +177,7 @@ final class Tracker: ObservableObject {
     private func applyTick(active: [AgentMonitor.ActiveAgent],
                            sessions: [AgentMonitor.AgentSession],
                            recent: [AgentMonitor.RecentProject],
-                           prompts: Int,
+                           promptDelta: Int,
                            tokenDeltas: [String: [String: TokenCounts]]) {
         let human = HumanMonitor.sample()
         let beat = EditorMonitor.read()
@@ -227,7 +226,7 @@ final class Tracker: ObservableObject {
             if currentProject == nil { currentProject = agent.projectName }
         }
 
-        today.prompts = prompts
+        today.prompts += promptDelta
         for (proj, models) in tokenDeltas {
             for (model, c) in models {
                 today.tokens[proj, default: [:]][model, default: TokenCounts()].add(c)

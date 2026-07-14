@@ -106,65 +106,95 @@ final class AgentMonitor: @unchecked Sendable {
         }
     }
 
-    /// Accrue token usage from newly-appended JSONL lines into today's log.
-    /// Tracks a byte offset per session file so we only parse new bytes — never the
-    /// whole (potentially huge) log. On first sight of a file we baseline to its current
-    /// end and count only forward, so tokens accrue from app start like the time tracking.
-    /// Privacy: reads usage counts, model, and cwd only — never message content.
-    /// Returns the token deltas (project -> model -> counts) from newly-appended lines,
-    /// for the caller to merge on the main actor. Runs off the main thread.
-    func accrueTokens() -> [String: [String: TokenCounts]] {
+    /// Accrue token usage AND prompt counts from newly-appended JSONL lines. Tracks a byte
+    /// offset per session file so we parse only NEW bytes each tick — never the whole log
+    /// (they reach hundreds of MB). On first sight of a today-modified file we backfill only
+    /// a bounded tail (today's activity is at the end), so startup stays cheap and bounded.
+    /// Privacy: reads usage counts, model, cwd, and prompt markers only — never content.
+    /// Runs off the main thread; the caller merges the deltas on the main actor.
+    func accrueTokens() -> (tokens: [String: [String: TokenCounts]], prompts: Int) {
         var deltas: [String: [String: TokenCounts]] = [:]
+        var prompts = 0
         let fm = FileManager.default
-        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return deltas }
+        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return ([:], 0) }
         var changed = false
         let startOfDay = Calendar.current.startOfDay(for: Date())
+        let backfillCap: UInt64 = 12 * 1024 * 1024   // read at most the last 12 MB when backfilling
 
         for dir in dirs {
             var isDir: ObjCBool = false
             guard fm.fileExists(atPath: dir.path, isDirectory: &isDir), isDir.boolValue else { continue }
-            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey]) else { continue }
+            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey, .contentModificationDateKey]) else { continue }
             for f in files where f.pathExtension == "jsonl" {
                 let path = f.path
-                guard let size = (try? f.resourceValues(forKeys: [.fileSizeKey]))?.fileSize else { continue }
+                let rv = try? f.resourceValues(forKeys: [.fileSizeKey, .contentModificationDateKey])
+                guard let size = rv?.fileSize else { continue }
                 let eof = UInt64(size)
 
                 guard let start = offsets[path] else {
-                    // First sight: backfill today's tokens (lines stamped since local midnight)
-                    // so the daily total is truly midnight→midnight, even for work done while
-                    // the app was closed. Then baseline the offset to EOF.
-                    if let data = try? Data(contentsOf: f), let lastNL = data.lastIndex(of: 0x0A) {
-                        for lineData in data[..<lastNL].split(separator: 0x0A) {
-                            guard let (project, model, counts, ts) = Self.parseUsage(Data(lineData)) else { continue }
-                            if let ts, ts < startOfDay { continue }   // only today's lines
-                            deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
-                        }
+                    // First sight: only backfill files touched today, reading a bounded tail.
+                    if (rv?.contentModificationDate ?? .distantPast) >= startOfDay {
+                        let from = eof > backfillCap ? eof - backfillCap : 0
+                        prompts += scanRange(f, from: from, skipPartialFirst: from > 0,
+                                             sinceMidnight: startOfDay, into: &deltas)
                     }
                     offsets[path] = eof; changed = true; continue
                 }
                 guard eof > start else { if eof < start { offsets[path] = eof; changed = true }; continue }
 
+                // Incremental: parse only the bytes appended since last tick.
                 guard let handle = try? FileHandle(forReadingFrom: f) else { continue }
                 defer { try? handle.close() }
                 try? handle.seek(toOffset: start)
-                guard let data = try? handle.readToEnd(), !data.isEmpty else { continue }
-
-                // Only consume up to the last newline; a trailing partial line is mid-write.
-                guard let lastNL = data.lastIndex(of: 0x0A) else { continue }
-                let complete = data[..<lastNL]
+                guard let data = try? handle.readToEnd(), !data.isEmpty,
+                      let lastNL = data.lastIndex(of: 0x0A) else { continue }
                 offsets[path] = start + UInt64(lastNL) + 1
                 changed = true
-
-                for lineData in complete.split(separator: 0x0A) {
-                    guard let (project, model, counts, _) = Self.parseUsage(Data(lineData)) else { continue }
-                    deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
+                for lineData in data[..<lastNL].split(separator: 0x0A) {
+                    let line = Data(lineData)
+                    if let (project, model, counts, _) = Self.parseUsage(line) {
+                        deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
+                    } else if Self.isUserPrompt(line) {
+                        prompts += 1
+                    }
                 }
             }
         }
         if changed, let data = try? JSONEncoder().encode(offsets) {
             try? data.write(to: offsetURL)
         }
-        return deltas
+        return (deltas, prompts)
+    }
+
+    /// Parse a byte range of a file (from `from` to EOF) for token usage + prompt count,
+    /// keeping only lines stamped since local midnight. Returns the prompt count found.
+    private func scanRange(_ f: URL, from: UInt64, skipPartialFirst: Bool,
+                           sinceMidnight: Date, into deltas: inout [String: [String: TokenCounts]]) -> Int {
+        guard let handle = try? FileHandle(forReadingFrom: f) else { return 0 }
+        defer { try? handle.close() }
+        try? handle.seek(toOffset: from)
+        guard let data = try? handle.readToEnd(), !data.isEmpty else { return 0 }
+        // If we started mid-file, drop the first (partial) line.
+        var slice = data[...]
+        if skipPartialFirst, let firstNL = data.firstIndex(of: 0x0A) { slice = data[(firstNL + 1)...] }
+        guard let lastNL = slice.lastIndex(of: 0x0A) else { return 0 }
+        var prompts = 0
+        for lineData in slice[..<lastNL].split(separator: 0x0A) {
+            let line = Data(lineData)
+            if let (project, model, counts, ts) = Self.parseUsage(line) {
+                if let ts, ts < sinceMidnight { continue }
+                deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
+            } else if Self.isUserPrompt(line) {
+                prompts += 1
+            }
+        }
+        return prompts
+    }
+
+    /// Cheap prompt-line detector (markers only — content never decoded). Skips huge lines.
+    private static func isUserPrompt(_ line: Data) -> Bool {
+        guard line.count < 262_144, let s = String(data: line, encoding: .utf8) else { return false }
+        return s.contains("\"type\":\"user\"") && s.contains("\"promptId\"")
     }
 
     /// Pull (project, model, token counts) from one assistant JSONL line. Returns nil for
@@ -222,39 +252,11 @@ final class AgentMonitor: @unchecked Sendable {
         return leaf
     }
 
-    /// Count of user prompts sent today across all session files modified today.
-    /// Counts lines only — message content is never decoded.
-    func promptsToday() -> Int {
-        let fm = FileManager.default
-        guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return 0 }
-        let startOfDay = Calendar.current.startOfDay(for: Date())
-        var count = 0
-
-        for dir in dirs {
-            guard let files = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]) else { continue }
-            for f in files where f.pathExtension == "jsonl" {
-                guard let mtime = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate,
-                      mtime >= startOfDay else { continue }
-                guard let data = fm.contents(atPath: f.path),
-                      let text = String(data: data, encoding: .utf8) else { continue }
-                // A human prompt line carries both markers; count, don't parse.
-                for line in text.split(separator: "\n", omittingEmptySubsequences: true)
-                where line.contains("\"type\":\"user\"") && line.contains("\"promptId\"") {
-                    // Only count prompts stamped today (files can span midnight).
-                    if let ts = extract(key: "timestamp", from: line),
-                       let date = ISO8601DateFormatter.cached.date(from: ts) {
-                        if date >= startOfDay { count += 1 }
-                    } else {
-                        count += 1
-                    }
-                }
-            }
-        }
-        return count
-    }
-
-    /// Last "cwd" value in the file, read from the tail (max 64 KB), cached per file.
+    /// Last "cwd" value in the file, read from the tail (max 64 KB). Cached per file and
+    /// reused — a session file's cwd is stable, so we never re-read the tail after the
+    /// first time (this alone was ~14 MB of tail reads every tick with hundreds of files).
     private func lastCwd(in file: URL) -> String? {
+        if let cached = cwdCache[file.path] { return cached }
         guard let handle = try? FileHandle(forReadingFrom: file) else { return cwdCache[file.path] }
         defer { try? handle.close() }
         let size = (try? handle.seekToEnd()) ?? 0

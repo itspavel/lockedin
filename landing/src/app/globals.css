@@ -57,6 +57,12 @@ body {
 .animate-marquee { animation: marquee var(--duration, 40s) linear infinite; }
 .marquee-group:hover .animate-marquee { animation-play-state: paused; }
 
+@keyframes spin-slow { to { transform: rotate(1turn); } }
+.animate-spin-slow { animation: spin-slow 6s linear infinite; }
+
+@keyframes glow-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.6; } }
+.animate-glow { animation: glow-pulse 5s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .live, .cur, .animate-marquee { animation: none; }
   html { scroll-behavior: auto; }
