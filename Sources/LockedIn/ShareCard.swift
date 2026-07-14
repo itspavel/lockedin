@@ -38,7 +38,7 @@ struct ShareCard: View {
             if tokens > 0 {
                 HStack(spacing: 10) {
                     badge("circle.hexagongrid", "\(tokens.tokensCompact) tokens")
-                    badge("dollarsign.circle", "\(cost.usd) of compute")
+                    badge("dollarsign.circle", "\(cost.usd) API value")
                 }
             }
 
@@ -90,6 +90,9 @@ struct ShareCardSheet: View {
             }
         }
         .padding(20)
+        .background(Theme.background)
+        .environment(\.colorScheme, .dark)
+        .tint(Theme.accent)
     }
 
     private func makeCard() -> ShareCard {
