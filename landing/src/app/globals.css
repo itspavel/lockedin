@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* LockedIn brand tokens — mirror Sources/LockedIn/Theme.swift.
+   Update here if the tool is redesigned so the site follows. */
+@theme {
+  --color-bg-top: #372666;      /* violet gradient top */
+  --color-bg-bottom: #1b1136;   /* near-black purple */
+  --color-surface: #ffffff12;   /* card fill (white ~7%) */
+  --color-border: #ffffff17;    /* card border (white ~9%) */
+  --color-accent: #ffd34a;      /* warm yellow */
+  --color-accent-ink: #2e1f05;  /* dark text on yellow */
+  --color-coral: #e8825a;       /* brand-mark coral (Ring Spark) */
+  --color-you: #ffd34a;         /* "you" data color */
+  --color-agent: #b7abd9;       /* agent (lavender) */
+  --color-ink: #f4f0ff;         /* primary text */
+  --color-ink-dim: #b9aee0;     /* secondary text */
+
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+}
+
+html { color-scheme: dark; }
+
+body {
+  background: linear-gradient(160deg, var(--color-bg-top), var(--color-bg-bottom) 70%);
+  background-attachment: fixed;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
