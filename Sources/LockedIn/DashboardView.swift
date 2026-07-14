@@ -832,7 +832,7 @@ private struct AIInsightsCard: View {
                 Text(.init(text)).font(.callout).fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                 if let t = ai.lastGenerated {
-                    Text("Generated \(t.formatted(date: .omitted, time: .shortened)) · numbers & project names only — no code or content sent")
+                    Text("\(ai.fromCache ? "Today's read, generated" : "Generated") \(t.formatted(date: .omitted, time: .shortened)) · numbers & project names only — no code or content sent")
                         .font(.caption2).foregroundStyle(.tertiary)
                 }
             } else {

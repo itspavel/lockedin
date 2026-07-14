@@ -12,6 +12,25 @@ final class AIInsights: ObservableObject {
     @Published private(set) var loading = false
     @Published private(set) var error: String?
     @Published private(set) var lastGenerated: Date?
+    /// True when the shown insight was loaded from today's cache (not billed this session).
+    @Published private(set) var fromCache = false
+
+    private let cacheText = "ai.insight.text"
+    private let cacheDate = "ai.insight.date"     // DayLog key the cache belongs to
+    private let cacheTime = "ai.insight.ts"
+
+    init() {
+        // Reuse today's insight across restarts / tab switches — one API call per day
+        // unless the user hits Refresh.
+        let d = UserDefaults.standard
+        if d.string(forKey: cacheDate) == DayLog.key(),
+           let t = d.string(forKey: cacheText), !t.isEmpty {
+            insight = t
+            fromCache = true
+            let ts = d.double(forKey: cacheTime)
+            if ts > 0 { lastGenerated = Date(timeIntervalSince1970: ts) }
+        }
+    }
 
     var apiKey: String { UserDefaults.standard.string(forKey: keyName) ?? "" }
     var hasKey: Bool { !apiKey.isEmpty }
@@ -30,6 +49,11 @@ final class AIInsights: ObservableObject {
         do {
             insight = try await callClaude(payload: payload)
             lastGenerated = Date()
+            fromCache = false
+            let d = UserDefaults.standard
+            d.set(insight, forKey: cacheText)
+            d.set(DayLog.key(), forKey: cacheDate)
+            d.set(Date().timeIntervalSince1970, forKey: cacheTime)
         } catch {
             self.error = (error as? AIError)?.message ?? error.localizedDescription
         }
