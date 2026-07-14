@@ -152,9 +152,8 @@ struct DesktopWidgetView: View {
             }
             .font(.caption2).foregroundStyle(.secondary)
         case .usage:
-            VStack(alignment: .leading, spacing: size == .small ? 6 : 9) {
-                usageBar("Session", usage.session)
-                if size != .small { usageBar("Weekly", usage.weekly) }
+            VStack(alignment: .leading, spacing: size == .small ? 6 : 8) {
+                ForEach(size == .small ? Array(usage.limits.prefix(2)) : usage.limits) { usageBar($0) }
                 if let r = usage.session?.resetsAt {
                     HStack(spacing: 5) {
                         Image(systemName: "arrow.clockwise").font(.system(size: 8, weight: .semibold))
@@ -162,17 +161,19 @@ struct DesktopWidgetView: View {
                     }
                     .font(.caption2).foregroundStyle(.tertiary)
                 }
+                if size != .small { ClaudeStatusLine() }
             }
         }
     }
 
     /// A refined limit bar: label, a colored capsule that warns as it fills, and the %.
-    private func usageBar(_ label: String, _ w: UsageWindow?) -> some View {
-        let pct = w?.percent ?? 0
+    private func usageBar(_ limit: UsageLimit) -> some View {
+        let pct = limit.percent
         let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
         return HStack(spacing: 9) {
-            Text(label).font(.caption.weight(.semibold)).foregroundStyle(.secondary)
-                .frame(width: 56, alignment: .leading)
+            Text(limit.label).font(.caption.weight(limit.active ? .bold : .semibold))
+                .foregroundStyle(limit.active ? .primary : .secondary)
+                .frame(width: 60, alignment: .leading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.12))

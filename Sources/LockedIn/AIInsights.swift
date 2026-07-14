@@ -57,8 +57,10 @@ final class AIInsights: ObservableObject {
             lines.append("Focus by hour today: \(byHour).")
         }
 
-        if usage.connected {
-            lines.append("Claude usage: Session \(Int(usage.session?.percent ?? 0))% (resets \(usage.session?.resetsAt?.untilCompact ?? "?")), Weekly \(Int(usage.weekly?.percent ?? 0))%, Weekly Sonnet \(Int(usage.weeklySonnet?.percent ?? 0))%. Plan \(usage.plan.label).")
+        if usage.connected, !usage.limits.isEmpty {
+            let lims = usage.limits.map { "\($0.label) \(Int($0.percent))%" }.joined(separator: ", ")
+            let reset = usage.session?.resetsAt?.untilCompact ?? "?"
+            lines.append("Claude usage limits: \(lims) (session resets \(reset)). Plan \(usage.plan.label).")
         }
         lines.append("Current streak: \(streak) days.")
 

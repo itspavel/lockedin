@@ -663,9 +663,7 @@ private struct UsageSection: View {
                 Text("Connect your Claude account in Settings to see your session and weekly limits.")
                     .font(.caption).foregroundStyle(.secondary)
             } else {
-                bar("Session (5 hour)", usage.session)
-                bar("Weekly (7 day)", usage.weekly)
-                bar("Weekly Sonnet (7 day)", usage.weeklySonnet)
+                ForEach(usage.limits) { bar($0) }
                 if let e = usage.error {
                     Label(e, systemImage: "exclamationmark.triangle").font(.caption).foregroundStyle(.orange)
                 }
@@ -686,20 +684,26 @@ private struct UsageSection: View {
         .dashCard()
     }
 
-    @ViewBuilder private func bar(_ title: String, _ w: UsageWindow?) -> some View {
+    @ViewBuilder private func bar(_ limit: UsageLimit) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(title).font(.callout.weight(.medium))
+                Text(limit.label).font(.callout.weight(limit.active ? .bold : .medium))
+                if limit.active {
+                    Text("active").font(.caption2.weight(.semibold)).foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(Capsule().fill(Theme.accent.opacity(0.15)))
+                }
                 Spacer()
-                if let r = w?.resetsAt {
+                if let r = limit.resetsAt {
                     Label("resets \(r.untilCompact)", systemImage: "arrow.clockwise")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
             }
-            ProgressView(value: min((w?.percent ?? 0) / 100, 1))
+            ProgressView(value: min(limit.percent / 100, 1))
+                .tint(limit.percent >= 90 ? .red : limit.percent >= 70 ? .orange : Theme.accent)
             HStack {
-                Text("\(Int(w?.percent ?? 0))% used").font(.caption2).foregroundStyle(.secondary)
-                if let r = w?.resetsAt {
+                Text("\(Int(limit.percent))% used").font(.caption2).foregroundStyle(.secondary)
+                if let r = limit.resetsAt {
                     Spacer()
                     Text(r.clockTime).font(.caption2).foregroundStyle(.tertiary)
                 }

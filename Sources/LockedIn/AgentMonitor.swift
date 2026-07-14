@@ -118,6 +118,7 @@ final class AgentMonitor: @unchecked Sendable {
         let fm = FileManager.default
         guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return deltas }
         var changed = false
+        let startOfDay = Calendar.current.startOfDay(for: Date())
 
         for dir in dirs {
             var isDir: ObjCBool = false
@@ -129,7 +130,17 @@ final class AgentMonitor: @unchecked Sendable {
                 let eof = UInt64(size)
 
                 guard let start = offsets[path] else {
-                    offsets[path] = eof; changed = true; continue   // baseline, don't backfill history
+                    // First sight: backfill today's tokens (lines stamped since local midnight)
+                    // so the daily total is truly midnight→midnight, even for work done while
+                    // the app was closed. Then baseline the offset to EOF.
+                    if let data = try? Data(contentsOf: f), let lastNL = data.lastIndex(of: 0x0A) {
+                        for lineData in data[..<lastNL].split(separator: 0x0A) {
+                            guard let (project, model, counts, ts) = Self.parseUsage(Data(lineData)) else { continue }
+                            if let ts, ts < startOfDay { continue }   // only today's lines
+                            deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
+                        }
+                    }
+                    offsets[path] = eof; changed = true; continue
                 }
                 guard eof > start else { if eof < start { offsets[path] = eof; changed = true }; continue }
 
@@ -145,7 +156,7 @@ final class AgentMonitor: @unchecked Sendable {
                 changed = true
 
                 for lineData in complete.split(separator: 0x0A) {
-                    guard let (project, model, counts) = Self.parseUsage(Data(lineData)) else { continue }
+                    guard let (project, model, counts, _) = Self.parseUsage(Data(lineData)) else { continue }
                     deltas[project, default: [:]][model, default: TokenCounts()].add(counts)
                 }
             }
@@ -158,13 +169,14 @@ final class AgentMonitor: @unchecked Sendable {
 
     /// Pull (project, model, token counts) from one assistant JSONL line. Returns nil for
     /// non-assistant lines or junk projects. Numbers only — content is never decoded.
-    private static func parseUsage(_ line: Data) -> (String, String, TokenCounts)? {
+    private static func parseUsage(_ line: Data) -> (String, String, TokenCounts, Date?)? {
         guard let obj = try? JSONSerialization.jsonObject(with: line) as? [String: Any],
               obj["type"] as? String == "assistant",
               let cwd = obj["cwd"] as? String, !isJunk(path: cwd),
               let message = obj["message"] as? [String: Any],
               let usage = message["usage"] as? [String: Any] else { return nil }
         let model = (message["model"] as? String) ?? "unknown"
+        let ts = (obj["timestamp"] as? String).flatMap { ISO8601DateFormatter.cached.date(from: $0) }
         var c = TokenCounts()
         c.input = usage["input_tokens"] as? Int ?? 0
         c.output = usage["output_tokens"] as? Int ?? 0
@@ -177,7 +189,7 @@ final class AgentMonitor: @unchecked Sendable {
             // No breakdown — treat the total as 5-minute (the common default).
             c.cacheWrite = usage["cache_creation_input_tokens"] as? Int ?? 0
         }
-        return (displayName(for: cwd), model, c)
+        return (displayName(for: cwd), model, c, ts)
     }
 
     /// Paths we never track — scratch/throwaway locations that aren't real projects.

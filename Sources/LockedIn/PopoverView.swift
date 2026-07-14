@@ -66,12 +66,14 @@ private struct PassiveView: View {
             if usage.connected {
                 Divider().padding(.vertical, 2)
                 VStack(alignment: .leading, spacing: 5) {
-                    usageRow("Session", usage.session)
-                    usageRow("Weekly", usage.weekly)
+                    Text("CLAUDE LIMITS").font(.system(size: 9, weight: .bold)).tracking(1.2)
+                        .foregroundStyle(.tertiary)
+                    ForEach(usage.limits) { usageRow($0) }
                     if let r = usage.session?.resetsAt {
                         Text("Session resets \(r.untilCompact) · \(r.clockTime)")
                             .font(.caption2).foregroundStyle(.tertiary)
                     }
+                    ClaudeStatusLine().padding(.top, 1)
                 }
             }
 
@@ -93,8 +95,6 @@ private struct PassiveView: View {
                 Text("Open Cursor or Claude Code and this fills itself. Nothing to start.")
                     .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
-
-            LockInButton(tracker: tracker)
 
             Divider().padding(.vertical, 4)
 
@@ -136,32 +136,18 @@ private struct PassiveView: View {
                 iconBtn(tracker.widgetPinned ? "pin.fill" : "pin",
                         tracker.widgetPinned ? "Pinned above apps" : "On desktop, behind apps",
                         tint: tracker.widgetPinned ? Theme.accent : .primary) { tracker.toggleWidgetPin() }
-
-                HStack(spacing: 0) {
-                    ForEach(WidgetSize.allCases) { s in
-                        Button { tracker.setWidgetSize(s) } label: {
-                            Text(s.label).font(.caption.weight(.bold))
-                                .frame(width: 34, height: 26)
-                                .background(tracker.widgetSize == s ? Color.primary.opacity(0.14) : .clear)
-                                .foregroundStyle(tracker.widgetSize == s ? Color.primary : .secondary)
-                                .contentShape(Rectangle())
-                        }.buttonStyle(.plain).help("Widget size \(s.label)")
-                    }
-                }
-                .clipShape(RoundedRectangle(cornerRadius: 7))
-                .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(.secondary.opacity(0.3), lineWidth: 1))
-                .padding(.leading, 2)
             }
         }
     }
 
     /// A compact Claude-usage limit row: label, a capsule that warns as it fills, percent.
-    private func usageRow(_ label: String, _ w: UsageWindow?) -> some View {
-        let pct = w?.percent ?? 0
+    private func usageRow(_ limit: UsageLimit) -> some View {
+        let pct = limit.percent
         let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
         return HStack(spacing: 8) {
-            Text(label).font(.caption2.weight(.medium)).foregroundStyle(.secondary)
-                .frame(width: 50, alignment: .leading)
+            Text(limit.label).font(.caption2.weight(limit.active ? .bold : .medium))
+                .foregroundStyle(limit.active ? .primary : .secondary)
+                .frame(width: 56, alignment: .leading)
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(Color.primary.opacity(0.1))
@@ -279,41 +265,3 @@ private struct AgentRunningRow: View {
     }
 }
 
-private struct LockInButton: View {
-    @ObservedObject var tracker: Tracker
-    @State private var minutes = 45
-    private let options = [25, 45, 60, 90]
-
-    var body: some View {
-        VStack(spacing: 8) {
-            // Duration pills — tap to choose, selected one is filled.
-            HStack(spacing: 6) {
-                ForEach(options, id: \.self) { m in
-                    Text("\(m)m")
-                        .font(.caption.weight(.semibold)).monospacedDigit()
-                        .padding(.vertical, 4).frame(maxWidth: .infinity)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(m == minutes ? Color.primary.opacity(0.12) : .clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 7)
-                                .strokeBorder(Color.primary.opacity(m == minutes ? 0.4 : 0.15), lineWidth: 1)
-                        )
-                        .contentShape(Rectangle())
-                        .onTapGesture { minutes = m }
-                }
-            }
-
-            Button { tracker.startLock(minutes: minutes, project: tracker.currentProject) } label: {
-                Label("Lock In · \(minutes) min", systemImage: "lock.fill")
-                    .font(.callout.weight(.bold))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 9)
-            }
-            .buttonStyle(.plain)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Theme.accent))
-            .foregroundStyle(.white)
-        }
-    }
-}

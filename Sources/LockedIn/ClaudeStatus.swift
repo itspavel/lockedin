@@ -119,3 +119,16 @@ final class StatusMonitor: ObservableObject {
         UserDefaults.standard.set(Array(s), forKey: "status.tracked")
     }
 }
+
+/// A compact one-line Claude status indicator (dot + summary) for the popover / widget.
+struct ClaudeStatusLine: View {
+    @ObservedObject private var status = StatusMonitor.shared
+    var body: some View {
+        HStack(spacing: 6) {
+            Circle().fill(status.allOperational ? .green : .orange).frame(width: 7, height: 7)
+            Text(status.allOperational ? "All Claude services operational" : status.summary)
+                .lineLimit(1).truncationMode(.tail)
+        }
+        .font(.caption2).foregroundStyle(.secondary)
+    }
+}

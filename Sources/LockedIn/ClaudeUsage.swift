@@ -15,6 +15,15 @@ struct UsageWindow {
     var resetsAt: Date?
 }
 
+/// One limit row from claude.ai's `limits` array — includes model-scoped limits (e.g. Fable).
+struct UsageLimit: Identifiable {
+    let label: String            // "Session", "Weekly", "Fable"
+    let percent: Double          // 0–100
+    let resetsAt: Date?
+    let active: Bool             // the currently-binding limit
+    var id: String { label }
+}
+
 /// Live Claude usage limits, fetched from claude.ai with the user's own session cookie.
 /// Stored in Keychain, least-access: only the orgs + usage endpoints are called.
 @MainActor
@@ -22,9 +31,10 @@ final class UsageManager: ObservableObject {
     static let shared = UsageManager()
     private let cookieKey = "claude.sessionKey"
 
-    @Published private(set) var session: UsageWindow?       // five_hour
+    @Published private(set) var session: UsageWindow?       // five_hour (menu bar %)
     @Published private(set) var weekly: UsageWindow?        // seven_day
-    @Published private(set) var weeklySonnet: UsageWindow?  // seven_day_sonnet
+    /// All limit rows including model-scoped ones (Session, Weekly, Fable, …) in API order.
+    @Published private(set) var limits: [UsageLimit] = []
     @Published private(set) var connected = false
     @Published private(set) var error: String?
     @Published private(set) var lastChecked: Date?
@@ -56,7 +66,7 @@ final class UsageManager: ObservableObject {
         if key.isEmpty { UserDefaults.standard.removeObject(forKey: cookieKey) }
         else { UserDefaults.standard.set(key, forKey: cookieKey) }
         connected = !key.isEmpty
-        if connected { start() } else { session = nil; weekly = nil; weeklySonnet = nil }
+        if connected { start() } else { session = nil; weekly = nil; limits = [] }
     }
 
     static func extractSessionKey(_ raw: String) -> String {
@@ -70,7 +80,7 @@ final class UsageManager: ObservableObject {
 
     func disconnect() {
         UserDefaults.standard.removeObject(forKey: cookieKey)
-        connected = false; session = nil; weekly = nil; weeklySonnet = nil; error = nil
+        connected = false; session = nil; weekly = nil; limits = []; error = nil
     }
 
     func refresh() async {
@@ -78,7 +88,7 @@ final class UsageManager: ObservableObject {
         do {
             let org = try await fetchOrgID(key)
             let usage = try await fetchUsage(org: org, key: key)
-            session = usage.0; weekly = usage.1; weeklySonnet = usage.2
+            session = usage.0; weekly = usage.1; limits = usage.2
             error = nil; lastChecked = Date()
         } catch {
             self.error = (error as? UsageError)?.message ?? error.localizedDescription
@@ -120,20 +130,42 @@ final class UsageManager: ObservableObject {
         return uuid
     }
 
-    private func fetchUsage(org: String, key: String) async throws -> (UsageWindow?, UsageWindow?, UsageWindow?) {
+    private func fetchUsage(org: String, key: String) async throws -> (UsageWindow?, UsageWindow?, [UsageLimit]) {
         let url = URL(string: "https://claude.ai/api/organizations/\(org)/usage")!
         guard let obj = try await get(url, key: key) as? [String: Any] else { throw UsageError.badData }
-        return (window(obj["five_hour"]), window(obj["seven_day"]), window(obj["seven_day_sonnet"]))
+        let lims = (obj["limits"] as? [[String: Any]]).map(parseLimits) ?? []
+        return (window(obj["five_hour"]), window(obj["seven_day"]), lims)
     }
 
     private func window(_ any: Any?) -> UsageWindow? {
-        guard let d = any as? [String: Any] else { return nil }
+        guard let d = any as? [String: Any], d["utilization"] != nil else { return nil }
         // utilization may be a 0–1 fraction or a 0–100 percentage — normalize.
         let raw = (d["utilization"] as? Double) ?? Double(d["utilization"] as? Int ?? 0)
         let pct = raw <= 1.0 ? raw * 100 : raw
         var reset: Date?
         if let s = d["resets_at"] as? String { reset = Self.parseDate(s) }
         return UsageWindow(percent: pct, resetsAt: reset)
+    }
+
+    /// Parse the `limits` array into ordered rows. Model-scoped rows (e.g. Fable) take the
+    /// model's display name; the session/weekly-all rows get friendly labels.
+    private func parseLimits(_ arr: [[String: Any]]) -> [UsageLimit] {
+        arr.map { d in
+            let pct = (d["percent"] as? Double) ?? Double(d["percent"] as? Int ?? 0)
+            let reset = (d["resets_at"] as? String).flatMap(Self.parseDate)
+            let active = d["is_active"] as? Bool ?? false
+            let kind = d["kind"] as? String ?? ""
+            let label: String
+            switch kind {
+            case "session": label = "Session"
+            case "weekly_all": label = "Weekly"
+            case "weekly_scoped":
+                let model = (d["scope"] as? [String: Any])?["model"] as? [String: Any]
+                label = (model?["display_name"] as? String) ?? "Weekly (scoped)"
+            default: label = kind.replacingOccurrences(of: "_", with: " ").capitalized
+            }
+            return UsageLimit(label: label, percent: pct, resetsAt: reset, active: active)
+        }
     }
 
     /// claude.ai timestamps come with fractional seconds; the default ISO8601 formatter
