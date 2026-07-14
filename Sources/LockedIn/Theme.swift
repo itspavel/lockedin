@@ -53,6 +53,14 @@ struct BrandMark: View {
     }
 }
 
+extension View {
+    /// Force a hover/help popover onto the dark brand surface so it doesn't render
+    /// system-light against the purple app.
+    func brandPopover() -> some View {
+        self.background(Theme.bgBottom).environment(\.colorScheme, .dark)
+    }
+}
+
 /// The signature yellow pill CTA (dark text on warm yellow).
 struct CTAButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {

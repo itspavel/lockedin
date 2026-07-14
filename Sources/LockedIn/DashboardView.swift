@@ -445,9 +445,10 @@ private struct SettingsTab: View {
                     Spacer()
                     DesktopWidgetView(tracker: tracker)
                         .frame(width: tracker.widgetSize.width)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
                         .padding(14)
-                        .background(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(Color(white: 0.13)))
+                        .background(RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color.black.opacity(0.22)))
                         .environment(\.colorScheme, .dark)
                         .allowsHitTesting(false)
                     Spacer()
@@ -619,6 +620,7 @@ private struct CookieHelp: View {
         }
         .padding(16)
         .frame(width: 360, alignment: .leading)
+        .brandPopover()
     }
 }
 
@@ -916,6 +918,7 @@ private struct RhythmCard: View {
                                 if h == peak { Label("Peak hour", systemImage: "flame.fill").font(.caption2).foregroundStyle(Theme.accent) }
                             }
                             .padding(11)
+                            .brandPopover()
                         }
                     }
                 }
@@ -1118,6 +1121,7 @@ private struct DayHoverCard: View {
         }
         .padding(13)
         .frame(width: 230, alignment: .leading)
+        .brandPopover()
     }
 }
 
