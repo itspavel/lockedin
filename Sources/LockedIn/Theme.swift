@@ -23,8 +23,34 @@ enum Theme {
     static let agent = Color.white.opacity(0.45)
     static let good = Color(red: 0.35, green: 0.85, blue: 0.48)
 
+    // Brand mark coral (design "Widget Logo Options" option 1a — Ring Spark).
+    static let brand = Color(red: 232 / 255, green: 130 / 255, blue: 90 / 255)
+
     static let cardRadius: CGFloat = 16
     static let barHeight: CGFloat = 14
+}
+
+/// The brand mark — design option 1a "Ring Spark": a progress ring frozen at 70% with a
+/// center dot ("reads as session % instantly at any size"). Coral on any surface.
+struct BrandMark: View {
+    var size: CGFloat = 16
+    var color: Color = Theme.brand
+    var progress: Double = 0.7
+
+    var body: some View {
+        // Ratios from the source SVG (viewBox 72: r 26, stroke 7, dot r 7).
+        let stroke = size * (7 / 59)
+        ZStack {
+            Circle().stroke(color.opacity(0.25), lineWidth: stroke)
+            Circle().trim(from: 0, to: progress)
+                .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Circle().fill(color)
+                .frame(width: size * (14 / 59), height: size * (14 / 59))
+        }
+        .padding(stroke / 2)
+        .frame(width: size, height: size)
+    }
 }
 
 /// The signature yellow pill CTA (dark text on warm yellow).

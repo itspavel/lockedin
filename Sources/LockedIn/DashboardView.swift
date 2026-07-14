@@ -66,7 +66,7 @@ struct DashboardView: View {
     private var sidebar: some View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 8) {
-                Image(systemName: "lock.fill").foregroundStyle(Theme.accent)
+                BrandMark(size: 17)
                 Text("LockedIn").font(.headline)
             }
             .padding(.horizontal, 14).padding(.top, 16).padding(.bottom, 14)

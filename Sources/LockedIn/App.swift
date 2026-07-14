@@ -90,16 +90,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // Show the current tool's real logo, in colour, when active and identifiable;
-        // otherwise a state symbol.
+        // otherwise the brand ring (option 1a) at the live Claude session %.
         if (tracker.humanActiveNow || !tracker.activeSessions.isEmpty),
            let logo = ToolIcon.colored(for: tracker.currentTool, size: 16) {
             logo.isTemplate = false
             button.image = logo
         } else {
-            let agentRunning = !tracker.activeSessions.isEmpty
-            let name = agentRunning ? "gearshape.2.fill"
-                     : tracker.humanActiveNow ? "circle.fill" : "circle"
-            button.image = symbol(name)
+            let pct = UsageManager.shared.session?.percent ?? 70
+            let active = tracker.humanActiveNow || !tracker.activeSessions.isEmpty
+            button.image = Self.ringImage(progress: pct / 100, dimmed: !active)
         }
         // Your focused time today (midnight–midnight), plus the session usage % when connected.
         var title = " " + tracker.today.humanTotal.hoursCompact
@@ -113,6 +112,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let cfg = NSImage.SymbolConfiguration(pointSize: 12, weight: .semibold)
         return NSImage(systemSymbolName: name, accessibilityDescription: nil)?
             .withSymbolConfiguration(cfg)
+    }
+
+    /// The brand mark as a menu-bar template image: ring at `progress` + center dot
+    /// (design option 1a). Template so it adapts to menu-bar light/dark.
+    static func ringImage(progress: Double, dimmed: Bool) -> NSImage {
+        let s: CGFloat = 16
+        let img = NSImage(size: NSSize(width: s, height: s), flipped: false) { _ in
+            let lw: CGFloat = 2.1
+            let r = s / 2 - lw / 2 - 0.5
+            let c = NSPoint(x: s / 2, y: s / 2)
+            let alpha: CGFloat = dimmed ? 0.45 : 1.0
+
+            let track = NSBezierPath()
+            track.appendArc(withCenter: c, radius: r, startAngle: 0, endAngle: 360)
+            track.lineWidth = lw
+            NSColor.black.withAlphaComponent(0.28 * alpha).setStroke()
+            track.stroke()
+
+            let sweep = max(0.02, min(progress, 1)) * 360
+            let arc = NSBezierPath()
+            arc.appendArc(withCenter: c, radius: r, startAngle: 90, endAngle: 90 - sweep, clockwise: true)
+            arc.lineWidth = lw
+            arc.lineCapStyle = .round
+            NSColor.black.withAlphaComponent(alpha).setStroke()
+            arc.stroke()
+
+            let dr = s * 0.12
+            NSColor.black.withAlphaComponent(alpha).setFill()
+            NSBezierPath(ovalIn: NSRect(x: c.x - dr, y: c.y - dr, width: dr * 2, height: dr * 2)).fill()
+            return true
+        }
+        img.isTemplate = true
+        return img
     }
 
     /// Accessory apps get no default menu, so standard editing shortcuts (Cmd+V/C/X/A/Z)

@@ -38,7 +38,8 @@ private struct PassiveView: View {
     var body: some View {
         let d = tracker.today
         VStack(alignment: .leading, spacing: 12) {
-            HStack {
+            HStack(spacing: 8) {
+                BrandMark(size: 15)
                 Text("Today").font(.headline)
                 Spacer()
                 LiveBadge(active: tracker.humanActiveNow || !tracker.activeAgents.isEmpty)

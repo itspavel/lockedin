@@ -245,7 +245,8 @@ struct DesktopWidgetView: View {
     }
 
     private var header: some View {
-        HStack {
+        HStack(spacing: 7) {
+            BrandMark(size: 13)
             Text("TODAY").font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(.secondary)
             Spacer()
             if tracker.editorConnected || !tracker.activeSessions.isEmpty || tracker.humanActiveNow {

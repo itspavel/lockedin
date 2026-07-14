@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Generate LockedIn's app icon from code — the signature split bar (solid = you,
-hatched = agent) on a graphite tile. Outputs Resources/AppIcon.icns.
-No emoji, no external art — premium and legible down to 16px."""
+"""Generate LockedIn's app icon — design option 1a "Ring Spark" (Widget Logo Options):
+a progress ring frozen at 70% with a center dot, cream on a warm coral gradient tile.
+Outputs Resources/AppIcon.icns. No emoji, no external art — legible down to 16px."""
+import math
 import os, subprocess, tempfile
 from PIL import Image, ImageDraw
 
@@ -18,67 +19,52 @@ def rounded_mask(size, box, radius):
     return m
 
 img = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-draw = ImageDraw.Draw(img)
 
-# --- tile: rounded square with the macOS content margin ---
+# --- tile: rounded square, coral gradient (145deg approximated vertically) ---
 margin = round(N * 0.085)
 tile = (margin, margin, N - margin, N - margin)
-tile_r = round((N - 2 * margin) * 0.2237)   # macOS-ish corner radius
+tile_w = N - 2 * margin
+tile_r = round(tile_w * 0.2237)   # macOS-ish corner radius
 
-# gentle graphite gradient — light at top, never near-black at the bottom
-top, bot = (62, 42, 110), (26, 17, 52)
+# stops from the design: #F0906A 0% -> #D96A42 55% -> #B8512F 100%
+c0, c1, c2 = (240, 144, 106), (217, 106, 66), (184, 81, 47)
 grad = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 gd = ImageDraw.Draw(grad)
 for y in range(N):
-    gd.line([(0, y), (N, y)], fill=lerp(top, bot, y / N) + (255,))
-tile_mask = rounded_mask(N, tile, tile_r)
-img.paste(grad, (0, 0), tile_mask)
+    t = y / N
+    col = lerp(c0, c1, t / 0.55) if t < 0.55 else lerp(c1, c2, (t - 0.55) / 0.45)
+    gd.line([(0, y), (N, y)], fill=col + (255,))
+img.paste(grad, (0, 0), rounded_mask(N, tile, tile_r))
 
-# --- signature split bar (optically centred, sits a touch below middle) ---
-bar_h = round(N * 0.135)
-cy = round(N * 0.55)
-bx0 = round(N * 0.225)
-bx1 = round(N * 0.775)
-bar_box = (bx0, cy - bar_h // 2, bx1, cy + bar_h // 2)
-bar_r = bar_h // 2
-split = bx0 + round((bx1 - bx0) * 0.42)   # 42% you, 58% agent
+# --- the mark: ring at 70% + center dot (geometry from the 72-viewBox SVG on a 120 tile) ---
+cx = cy = N / 2
+R = tile_w * (26 / 120)            # ring radius
+sw = tile_w * (7 / 120)            # stroke width
+dot_r = tile_w * (7 / 120)         # center dot radius
+cream = (255, 244, 235)
 
-# whole bar mask (rounded ends)
-bar_mask = rounded_mask(N, bar_box, bar_r)
+layer = Image.new("RGBA", (N, N), (0, 0, 0, 0))
+ld = ImageDraw.Draw(layer)
 
-# human portion: solid white
-human = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-ImageDraw.Draw(human).rectangle((bx0, bar_box[1], split, bar_box[3]), fill=(255, 211, 74, 255))
-# agent portion: mid-grey base + diagonal hatch, clipped to the agent rectangle only
-agent = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-ad = ImageDraw.Draw(agent)
-ad.rectangle((split, bar_box[1], bx1, bar_box[3]), fill=(126, 116, 160, 255))
-step = round(N * 0.022)
-lw = max(2, round(N * 0.006))
-for x in range(split - bar_h, bx1 + bar_h, step):
-    ad.line([(x, bar_box[3] + bar_h), (x + bar_h, bar_box[1] - bar_h)],
-            fill=(168, 158, 200, 255), width=lw)
-agent_rect = Image.new("L", (N, N), 0)
-ImageDraw.Draw(agent_rect).rectangle((split, bar_box[1], bx1, bar_box[3]), fill=255)
-agent = Image.composite(agent, Image.new("RGBA", (N, N), (0, 0, 0, 0)), agent_rect)
+def ring_bbox(radius):
+    return (cx - radius, cy - radius, cx + radius, cy + radius)
 
-bar = Image.alpha_composite(human, agent)
-# thin gap between segments for a crisp split
-gap = max(3, round(N * 0.006))
-ImageDraw.Draw(bar).rectangle((split - gap, bar_box[1], split + gap, bar_box[3]), fill=(26, 17, 52, 255))
-img.paste(bar, (0, 0), Image.composite(bar_mask, Image.new("L", (N, N), 0), bar_mask))
+# track: full circle, cream at 28%
+ld.ellipse(ring_bbox(R + sw / 2), outline=cream + (71,), width=round(sw))
 
-# --- a row of three small "project" ticks above the bar (it's a tracker) ---
-tick_h = round(N * 0.028)
-tick_y = cy - bar_h // 2 - round(N * 0.10)
-widths = [0.34, 0.22, 0.13]
-shade = [(255, 211, 74), (170, 160, 205), (120, 110, 155)]
-tx = bx0
-for w, c in zip(widths, shade):
-    tw = round((bx1 - bx0) * w)
-    tm = rounded_mask(N, (tx, tick_y, tx + tw, tick_y + tick_h), tick_h // 2)
-    img.paste(Image.new("RGBA", (N, N), c + (255,)), (0, 0), tm)
-    tx += tw + round(N * 0.025)
+# progress: 70% sweep from 12 o'clock, clockwise, round caps
+start, sweep = 270, 0.70 * 360
+end = (start + sweep) % 360
+ld.arc(ring_bbox(R + sw / 2), start=start, end=end, fill=cream + (255,), width=round(sw))
+for ang in (start, end):   # round line caps
+    px = cx + R * math.cos(math.radians(ang))
+    py = cy + R * math.sin(math.radians(ang))
+    ld.ellipse((px - sw / 2, py - sw / 2, px + sw / 2, py + sw / 2), fill=cream + (255,))
+
+# center dot
+ld.ellipse((cx - dot_r, cy - dot_r, cx + dot_r, cy + dot_r), fill=cream + (255,))
+
+img = Image.alpha_composite(img, layer)
 
 # downscale (anti-alias)
 icon = img.resize((S, S), Image.Resampling.LANCZOS)
@@ -86,8 +72,7 @@ icon = img.resize((S, S), Image.Resampling.LANCZOS)
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 res_dir = os.path.join(root, "Resources")
 os.makedirs(res_dir, exist_ok=True)
-png1024 = os.path.join(res_dir, "icon_1024.png")
-icon.save(png1024)
+icon.save(os.path.join(res_dir, "icon_1024.png"))
 
 # build .iconset and convert to .icns
 with tempfile.TemporaryDirectory() as d:
