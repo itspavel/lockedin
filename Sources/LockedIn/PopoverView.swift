@@ -18,6 +18,8 @@ struct PopoverView: View {
         }
         .padding(18)
         .frame(width: 320)
+        .background(Theme.background)
+        .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
         .sheet(isPresented: $showShareSheet) {
             ShareCardSheet(tracker: tracker)
@@ -102,23 +104,23 @@ private struct PassiveView: View {
 
             Divider().padding(.vertical, 4)
 
-            // Primary action — big, obvious, easy to hit.
+            // Primary action — the signature yellow CTA.
             Button(action: onOpenDashboard) {
                 HStack(spacing: 9) {
                     Image(systemName: "square.grid.2x2")
-                    Text("Open Dashboard").fontWeight(.medium)
+                    Text("Open Dashboard").fontWeight(.bold)
                     Spacer()
                     if tracker.streak > 0 {
-                        Label("\(tracker.streak)d", systemImage: "flame")
-                            .font(.caption).foregroundStyle(.secondary)
+                        Label("\(tracker.streak)d", systemImage: "flame").font(.caption)
                     }
-                    Image(systemName: "chevron.right").font(.caption2).foregroundStyle(.tertiary)
+                    Image(systemName: "chevron.right").font(.caption2)
                 }
-                .padding(.horizontal, 12).padding(.vertical, 10)
+                .foregroundStyle(Theme.accentText)
+                .padding(.horizontal, 14).padding(.vertical, 11)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .background(RoundedRectangle(cornerRadius: 10).fill(Color.primary.opacity(0.06)))
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent))
 
             // Controls row — left: actions. Right: widget controls. Generous tap targets.
             HStack(spacing: 4) {

@@ -1,15 +1,42 @@
 import SwiftUI
 
 /// Design tokens. SF Symbols only — no emoji anywhere in the UI (user rule).
-/// Restrained palette: monochrome base + a single cobalt accent. "You" (your focused
-/// time) is the hero, so it carries the accent; agents stay hatched grey.
+/// Utility-app palette (CleanMyMac-inspired, approved 2026-07-14): deep violet gradient
+/// surfaces, soft white-on-purple cards, one warm yellow accent for CTAs and hero data.
+/// Everything renders in forced dark scheme — the purple IS the brand surface.
 enum Theme {
-    static let accent = Color(red: 0.13, green: 0.42, blue: 0.95)   // cobalt
+    // Surfaces
+    static let bgTop = Color(red: 0.216, green: 0.145, blue: 0.400)     // deep violet
+    static let bgBottom = Color(red: 0.106, green: 0.067, blue: 0.212)  // near-black purple
+    static var background: LinearGradient {
+        LinearGradient(colors: [bgTop, bgBottom], startPoint: .topLeading, endPoint: .bottom)
+    }
+    static let card = Color.white.opacity(0.07)
+    static let cardBorder = Color.white.opacity(0.09)
+
+    // Accent — warm yellow; CTAs get dark text on it.
+    static let accent = Color(red: 1.0, green: 0.83, blue: 0.29)
+    static let accentText = Color(red: 0.18, green: 0.12, blue: 0.02)
+
+    // Data colors: "you" is the hero (yellow), agents stay quiet hatched light.
     static let human = accent
-    static let agent = Color.secondary
+    static let agent = Color.white.opacity(0.45)
+    static let good = Color(red: 0.35, green: 0.85, blue: 0.48)
 
     static let cardRadius: CGFloat = 16
     static let barHeight: CGFloat = 14
+}
+
+/// The signature yellow pill CTA (dark text on warm yellow).
+struct CTAButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.callout.weight(.bold))
+            .foregroundStyle(Theme.accentText)
+            .padding(.vertical, 9).padding(.horizontal, 16)
+            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Theme.accent.opacity(configuration.isPressed ? 0.8 : 1)))
+    }
 }
 
 /// The signature element: one bar split into human (solid) and agent (hatched) portions.

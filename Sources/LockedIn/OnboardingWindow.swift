@@ -87,12 +87,14 @@ struct OnboardingView: View {
                 Spacer()
                 Button("Get started") { onFinish() }
                     .keyboardShortcut(.defaultAction)
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(CTAButtonStyle())
             }
             .padding(.top, 2)
         }
         .padding(26)
         .frame(width: 460)
+        .background(Theme.background)
+        .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
     }
 }

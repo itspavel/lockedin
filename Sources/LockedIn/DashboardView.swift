@@ -23,10 +23,9 @@ extension View {
         self.padding(pad)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor)))
+                .fill(Theme.card))
             .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.07)))
-            .shadow(color: .black.opacity(0.05), radius: 7, y: 2)
+                .strokeBorder(Theme.cardBorder))
     }
 }
 
@@ -44,11 +43,12 @@ struct DashboardView: View {
     var body: some View {
         HStack(spacing: 0) {
             sidebar
-            Divider()
+            Divider().overlay(Color.white.opacity(0.06))
             ScrollView { content.padding(24) }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(nsColor: .textBackgroundColor))
         }
+        .background(Theme.background)
+        .environment(\.colorScheme, .dark)   // the purple IS the surface — always dark chrome
         .tint(Theme.accent)
         .frame(minWidth: 860, minHeight: 600)
         .task {
@@ -98,7 +98,7 @@ struct DashboardView: View {
             }
         }
         .frame(width: 210)
-        .background(Color(nsColor: .windowBackgroundColor))
+        .background(Color.black.opacity(0.18))
     }
 
     @ViewBuilder private var content: some View {

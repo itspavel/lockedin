@@ -26,7 +26,7 @@ tile = (margin, margin, N - margin, N - margin)
 tile_r = round((N - 2 * margin) * 0.2237)   # macOS-ish corner radius
 
 # gentle graphite gradient — light at top, never near-black at the bottom
-top, bot = (54, 56, 62), (32, 33, 39)
+top, bot = (62, 42, 110), (26, 17, 52)
 grad = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 gd = ImageDraw.Draw(grad)
 for y in range(N):
@@ -48,16 +48,16 @@ bar_mask = rounded_mask(N, bar_box, bar_r)
 
 # human portion: solid white
 human = Image.new("RGBA", (N, N), (0, 0, 0, 0))
-ImageDraw.Draw(human).rectangle((bx0, bar_box[1], split, bar_box[3]), fill=(40, 110, 245, 255))
+ImageDraw.Draw(human).rectangle((bx0, bar_box[1], split, bar_box[3]), fill=(255, 211, 74, 255))
 # agent portion: mid-grey base + diagonal hatch, clipped to the agent rectangle only
 agent = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 ad = ImageDraw.Draw(agent)
-ad.rectangle((split, bar_box[1], bx1, bar_box[3]), fill=(120, 122, 130, 255))
+ad.rectangle((split, bar_box[1], bx1, bar_box[3]), fill=(126, 116, 160, 255))
 step = round(N * 0.022)
 lw = max(2, round(N * 0.006))
 for x in range(split - bar_h, bx1 + bar_h, step):
     ad.line([(x, bar_box[3] + bar_h), (x + bar_h, bar_box[1] - bar_h)],
-            fill=(165, 167, 175, 255), width=lw)
+            fill=(168, 158, 200, 255), width=lw)
 agent_rect = Image.new("L", (N, N), 0)
 ImageDraw.Draw(agent_rect).rectangle((split, bar_box[1], bx1, bar_box[3]), fill=255)
 agent = Image.composite(agent, Image.new("RGBA", (N, N), (0, 0, 0, 0)), agent_rect)
@@ -65,14 +65,14 @@ agent = Image.composite(agent, Image.new("RGBA", (N, N), (0, 0, 0, 0)), agent_re
 bar = Image.alpha_composite(human, agent)
 # thin gap between segments for a crisp split
 gap = max(3, round(N * 0.006))
-ImageDraw.Draw(bar).rectangle((split - gap, bar_box[1], split + gap, bar_box[3]), fill=(22, 23, 27, 255))
+ImageDraw.Draw(bar).rectangle((split - gap, bar_box[1], split + gap, bar_box[3]), fill=(26, 17, 52, 255))
 img.paste(bar, (0, 0), Image.composite(bar_mask, Image.new("L", (N, N), 0), bar_mask))
 
 # --- a row of three small "project" ticks above the bar (it's a tracker) ---
 tick_h = round(N * 0.028)
 tick_y = cy - bar_h // 2 - round(N * 0.10)
 widths = [0.34, 0.22, 0.13]
-shade = [(40, 110, 245), (150, 155, 170), (105, 108, 120)]
+shade = [(255, 211, 74), (170, 160, 205), (120, 110, 155)]
 tx = bx0
 for w, c in zip(widths, shade):
     tw = round((bx1 - bx0) * w)

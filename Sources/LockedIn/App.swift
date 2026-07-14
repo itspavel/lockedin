@@ -50,6 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover = NSPopover()
         popover.behavior = .transient
+        popover.appearance = NSAppearance(named: .darkAqua)   // purple-brand content, dark chrome
         popover.contentSize = NSSize(width: 320, height: 460)
         popover.contentViewController = NSHostingController(
             rootView: PopoverView(tracker: tracker,

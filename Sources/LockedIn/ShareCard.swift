@@ -52,12 +52,13 @@ struct ShareCard: View {
         .frame(width: 460)
         .background(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(Color(nsColor: .windowBackgroundColor))
+                .fill(Theme.background)
         )
         .overlay(
             RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .strokeBorder(Color.primary.opacity(0.12), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
         )
+        .environment(\.colorScheme, .dark)
     }
 
     private func badge(_ symbol: String, _ text: String) -> some View {

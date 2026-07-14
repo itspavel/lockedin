@@ -15,6 +15,8 @@ struct DesktopWidgetView: View {
             if tracker.lockActive { lockedFace } else { passiveFace }
         }
         .frame(width: size.width)
+        .background(Theme.background.opacity(0.94))   // brand surface over the window blur
+        .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
         .contentShape(Rectangle())
         .gesture(
