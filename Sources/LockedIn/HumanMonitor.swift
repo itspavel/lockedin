@@ -4,11 +4,19 @@ import CoreGraphics
 /// Detects whether the human is actively working in a dev tool right now.
 /// Zero permissions: frontmost app identity via NSWorkspace, idle time via CGEventSource.
 struct HumanMonitor {
-    /// App names (localizedName) that count as "working" out of the box.
+    /// App names (localizedName) that count as "working" out of the box. Building isn't
+    /// only coding — a real builder's day is also the browser (Figma, docs, dashboards),
+    /// design tools, and team chat. Anything here can be unchecked in Settings.
     static let devAppNames: Set<String> = [
+        // Editors / terminals
         "Cursor", "Code", "Visual Studio Code", "Windsurf", "Antigravity",
         "Xcode", "Terminal", "iTerm2", "Warp", "Ghostty", "kitty",
         "Zed", "Sublime Text", "IntelliJ IDEA", "PyCharm", "WebStorm", "GoLand",
+        // Browsers — where Figma, docs, dashboards, and much of the work live
+        "Safari", "Google Chrome", "Arc", "Brave Browser", "Microsoft Edge",
+        "Firefox", "Chromium", "Dia",
+        // Design / docs / coordination
+        "Figma", "Notion", "Linear", "Slack", "Discord", "Obsidian", "Sketch",
     ]
 
     /// User customization from Settings: apps added to / removed from the default list.

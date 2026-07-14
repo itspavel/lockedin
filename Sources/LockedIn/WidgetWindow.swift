@@ -114,13 +114,12 @@ final class WidgetWindowController {
     // MARK: - Level / visibility
 
     private func applyLevel(pinned: Bool) {
-        // Pinned: float above every app. Unpinned: sit on the desktop, behind all app
-        // windows (just above the wallpaper). isFloatingPanel must also toggle off, or the
-        // panel keeps floating above other apps regardless of the level we set.
+        // Pinned: float above every app. Unpinned: a normal-level window — you can drag it,
+        // and focusing another app covers it (so it recedes behind your apps). The original
+        // bug was isFloatingPanel staying true, which kept it floating on top when unpinned.
+        // (Desktop-window level would sit behind everything but stops receiving drags.)
         panel.isFloatingPanel = pinned
-        panel.level = pinned
-            ? .floating
-            : NSWindow.Level(rawValue: Int(CGWindowLevelForKey(.desktopWindow)) + 1)
+        panel.level = pinned ? .floating : .normal
         if panel.isVisible { panel.orderFrontRegardless() }
     }
 
