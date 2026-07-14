@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Ticker, fmtHM } from "@/components/ticker";
+import { Ticker } from "@/components/ticker";
 import { SplitBar } from "@/components/bar";
 
 type View = "dashboard" | "projects" | "calendar";
@@ -79,7 +79,7 @@ export function Dashboard() {
                   <div className="mb-[18px] grid gap-4 sm:grid-cols-[1.3fr_1fr]">
                     <div className="rounded-[10px] border border-[var(--color-line)] p-5">
                       <div className="mb-1.5 text-[10px] tracking-[0.12em] text-[var(--color-dimmer)]">FOCUSED TODAY</div>
-                      <div className="tnum mb-3.5 text-[44px] font-bold leading-none"><Ticker value={372} format={fmtHM} /></div>
+                      <div className="tnum mb-3.5 text-[44px] font-bold leading-none"><Ticker value={372} format="hm" /></div>
                       <SplitBar you={0.63} height={12} />
                     </div>
                     <div className="rounded-[10px] border border-[var(--color-line-green)] bg-[var(--color-green)]/[0.05] p-5">

@@ -36,7 +36,7 @@ export function Limits() {
                     <span className="text-[11px] text-[var(--color-dimmer)]">{l.reset}</span>
                   </div>
                   <div className="tnum mb-4 text-[52px] font-extrabold leading-none" style={{ color: l.color }}>
-                    <Ticker value={l.pct} format={(n) => `${Math.round(n)}%`} />
+                    <Ticker value={l.pct} format="pct" />
                   </div>
                   <Meter value={l.pct / 100} color={l.color} height={9} />
                 </div>

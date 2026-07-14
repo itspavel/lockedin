@@ -2,9 +2,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useInView } from "motion/react";
 
-/** Counts up to `value` when in view. `format` maps number -> display. */
-export function Ticker({ value, format = (n) => String(Math.round(n)), duration = 1300, className }:
-  { value: number; format?: (n: number) => string; duration?: number; className?: string }) {
+export const fmtHM = (n: number) => {
+  const total = Math.round(n), h = Math.floor(total / 60), m = total % 60;
+  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
+};
+
+// String-keyed formats so this client component can be used from server components
+// (functions can't be passed as props across the server/client boundary).
+type Fmt = "int" | "hm" | "pct";
+const FORMATTERS: Record<Fmt, (n: number) => string> = {
+  int: (n) => String(Math.round(n)),
+  hm: fmtHM,
+  pct: (n) => `${Math.round(n)}%`,
+};
+
+/** Counts up to `value` when in view. */
+export function Ticker({ value, format = "int", duration = 1300, className }:
+  { value: number; format?: Fmt; duration?: number; className?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const inView = useInView(ref, { once: true, margin: "-10%" });
   const [n, setN] = useState(0);
@@ -20,10 +34,5 @@ export function Ticker({ value, format = (n) => String(Math.round(n)), duration 
     raf = requestAnimationFrame(step);
     return () => cancelAnimationFrame(raf);
   }, [inView, value, duration]);
-  return <span ref={ref} className={className}>{format(n)}</span>;
+  return <span ref={ref} className={className}>{FORMATTERS[format](n)}</span>;
 }
-
-export const fmtHM = (n: number) => {
-  const total = Math.round(n), h = Math.floor(total / 60), m = total % 60;
-  return h > 0 ? `${h}h ${String(m).padStart(2, "0")}m` : `${m}m`;
-};

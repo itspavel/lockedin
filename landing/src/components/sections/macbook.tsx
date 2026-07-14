@@ -1,5 +1,5 @@
 import { Ring } from "@/components/ring";
-import { Ticker, fmtHM } from "@/components/ticker";
+import { Ticker } from "@/components/ticker";
 import { SplitBar } from "@/components/bar";
 
 /** Stylised MacBook running a terminal with the LockedIn widget floating over it. */
@@ -44,7 +44,7 @@ export function MacBook() {
                 <span className="live ml-auto h-[5px] w-[5px] rounded-full bg-[var(--color-green)]" />
               </div>
               <div className="tnum text-[clamp(22px,7cqw,40px)] font-bold leading-none">
-                <Ticker value={372} format={fmtHM} />
+                <Ticker value={372} format="hm" />
               </div>
               <div className="mb-3.5 mt-1 text-[10px] text-[var(--color-dimmer)]">+ 3h 40m agents</div>
               <SplitBar you={0.63} height={12} className="mb-2" />
