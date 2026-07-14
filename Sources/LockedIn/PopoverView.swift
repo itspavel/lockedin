@@ -80,10 +80,14 @@ private struct PassiveView: View {
             if !tracker.sortedProjects.isEmpty {
                 Divider().padding(.vertical, 2)
                 ForEach(tracker.sortedProjects.prefix(4), id: \.name) { p in
-                    HStack {
+                    HStack(spacing: 6) {
                         Text(p.name).lineLimit(1).truncationMode(.middle)
                         Spacer()
-                        Text(p.time.total.hoursCompact).fontWeight(.semibold).monospacedDigit()
+                        if p.time.agent > 0 {
+                            Text("+\(p.time.agent.hoursCompact) ag").font(.caption2)
+                                .monospacedDigit().foregroundStyle(.tertiary)
+                        }
+                        Text(p.time.human.hoursCompact).fontWeight(.semibold).monospacedDigit()
                     }
                     .font(.callout)
                 }

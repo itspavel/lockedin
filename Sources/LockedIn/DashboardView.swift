@@ -434,6 +434,9 @@ private struct SettingsTab: View {
                 Text("After this long with no keyboard or mouse input, you're marked idle and the clock pauses.")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                Divider().padding(.vertical, 4)
+                TrackedAppsList()
             }
 
             section("Desktop widget") {
@@ -616,6 +619,51 @@ private struct CookieHelp: View {
         }
         .padding(16)
         .frame(width: 360, alignment: .leading)
+    }
+}
+
+/// "Counts as work" — pick which apps' frontmost time counts as focused. Lists currently
+/// running apps plus everything already tracked; dev tools are on by default.
+private struct TrackedAppsList: View {
+    @State private var apps: [String] = []
+    @State private var version = 0   // bump to re-evaluate toggle states after a change
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Counts as work").font(.callout.weight(.semibold))
+                Spacer()
+                Button { load() } label: { Image(systemName: "arrow.clockwise").font(.caption) }
+                    .buttonStyle(.plain).foregroundStyle(.secondary).help("Refresh running apps")
+            }
+            Text("Time in a checked app counts as focused (with input). Dev tools are on by default — add Figma, browsers, or anything else you work in.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+
+            let cols = [GridItem(.adaptive(minimum: 190), spacing: 6)]
+            LazyVGrid(columns: cols, alignment: .leading, spacing: 4) {
+                ForEach(apps, id: \.self) { name in
+                    Toggle(isOn: Binding(
+                        get: { _ = version; return HumanMonitor.isWorkApp(name) },
+                        set: { HumanMonitor.setWorkApp(name, $0); version += 1 })) {
+                        Text(name).lineLimit(1).truncationMode(.tail)
+                    }
+                    .toggleStyle(.checkbox).font(.callout)
+                }
+            }
+        }
+        .onAppear(perform: load)
+    }
+
+    private func load() {
+        let running = NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap(\.localizedName)
+        // Running apps + everything already configured (so a quit app can still be unchecked).
+        var all = Set(running)
+        all.formUnion(HumanMonitor.addedApps)
+        all.formUnion(HumanMonitor.devAppNames.filter { running.contains($0) })
+        all.remove("LockedIn")
+        apps = all.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }
 }
 

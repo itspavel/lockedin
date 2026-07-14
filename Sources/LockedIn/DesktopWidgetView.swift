@@ -111,10 +111,10 @@ struct DesktopWidgetView: View {
             }
         case .projects:
             if tracker.widgetConfig.combineProjects {
-                projectRow("All projects", d.total)
+                projectRow("All projects", you: d.humanTotal, agent: d.agentTotal)
             } else {
                 ForEach(tracker.sortedProjects.prefix(projectLimit), id: \.name) { p in
-                    projectRow(p.name, p.time.total)
+                    projectRow(p.name, you: p.time.human, agent: p.time.agent)
                 }
             }
         case .agents:
@@ -188,11 +188,17 @@ struct DesktopWidgetView: View {
         }
     }
 
-    private func projectRow(_ name: String, _ time: TimeInterval) -> some View {
-        HStack {
+    /// One project row: YOUR minutes bold (consistent with the headline), agent time as
+    /// a quiet "+Xm ag" tag — no more combined numbers that don't match "focused".
+    private func projectRow(_ name: String, you: TimeInterval, agent: TimeInterval) -> some View {
+        HStack(spacing: 6) {
             Text(name).font(.callout.weight(.medium)).lineLimit(1).truncationMode(.middle)
             Spacer()
-            Text(time.hoursCompact).font(.callout.weight(.bold)).monospacedDigit()
+            if agent > 0 {
+                Text("+\(agent.hoursCompact) ag").font(.caption2).monospacedDigit()
+                    .foregroundStyle(.tertiary)
+            }
+            Text(you.hoursCompact).font(.callout.weight(.bold)).monospacedDigit()
         }
     }
 
