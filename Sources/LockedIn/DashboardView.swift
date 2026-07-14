@@ -506,6 +506,10 @@ private struct SettingsTab: View {
                 }
             }
 
+            section("Software update") {
+                UpdateSettings()
+            }
+
             section("General") {
                 Toggle("Launch at login", isOn: $loginEnabled)
                     .onChange(of: loginEnabled) { _, want in loginEnabled = LoginItem.setEnabled(want) }
@@ -666,6 +670,50 @@ private struct TrackedAppsList: View {
         all.formUnion(HumanMonitor.devAppNames.filter { running.contains($0) })
         all.remove("LockedIn")
         apps = all.sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
+    }
+}
+
+private struct UpdateSettings: View {
+    @ObservedObject private var updater = Updater.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("You're running **v\(updater.currentVersion)**").font(.callout)
+                Spacer()
+                Button(updater.checking ? "Checking…" : "Check for updates") {
+                    Task { await updater.check(userInitiated: true) }
+                }.disabled(updater.checking)
+            }
+
+            if let rel = updater.available {
+                Divider().padding(.vertical, 2)
+                Label("Version \(rel.version) is available", systemImage: "arrow.down.circle.fill")
+                    .font(.callout.weight(.semibold)).foregroundStyle(Theme.accent)
+                if !rel.notes.isEmpty {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("What's new").font(.caption.weight(.semibold)).foregroundStyle(.secondary)
+                        ForEach(rel.notes, id: \.self) { n in
+                            HStack(alignment: .top, spacing: 7) {
+                                Text("•").foregroundStyle(Theme.accent)
+                                Text(n).fixedSize(horizontal: false, vertical: true)
+                            }.font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.padding(.leading, 2)
+                }
+                Button { updater.openDownload() } label: {
+                    Label("Download update", systemImage: "square.and.arrow.down")
+                }.buttonStyle(.borderedProminent).tint(Theme.accent)
+            } else if updater.upToDate {
+                Label("You're on the latest version.", systemImage: "checkmark.circle")
+                    .font(.caption).foregroundStyle(.green)
+            }
+
+            if let t = updater.lastChecked {
+                Text("Last checked \(t.formatted(date: .omitted, time: .shortened)) · checks automatically every few hours")
+                    .font(.caption2).foregroundStyle(.tertiary)
+            }
+        }
     }
 }
 

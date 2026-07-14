@@ -38,6 +38,8 @@ private struct PassiveView: View {
     var body: some View {
         let d = tracker.today
         VStack(alignment: .leading, spacing: 12) {
+            UpdateBanner()
+
             HStack(spacing: 8) {
                 BrandMark(size: 15)
                 Text("Today").font(.headline)
@@ -165,6 +167,36 @@ private struct PassiveView: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain).help(help)
+    }
+}
+
+/// In-popover "update available" banner (yellow). Tapping opens the new DMG.
+private struct UpdateBanner: View {
+    @ObservedObject private var updater = Updater.shared
+    var body: some View {
+        if let rel = updater.available {
+            Button { updater.openDownload() } label: {
+                HStack(spacing: 9) {
+                    Image(systemName: "arrow.down.circle.fill")
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Update available · v\(rel.version)").font(.caption.weight(.bold))
+                        if let n = rel.notes.first {
+                            Text(n).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 6)
+                    Text("Update").font(.caption.weight(.bold))
+                        .padding(.horizontal, 9).padding(.vertical, 4)
+                        .background(Capsule().fill(Theme.accent))
+                        .foregroundStyle(Theme.accentText)
+                }
+                .padding(.horizontal, 11).padding(.vertical, 9)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent.opacity(0.12)))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Theme.accent.opacity(0.3)))
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 

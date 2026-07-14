@@ -1,0 +1,11 @@
+{
+  "version": "0.1",
+  "date": "2026-07-15",
+  "url": "https://lockedin.app/download/LockedIn.dmg",
+  "minSystem": "14.0",
+  "notes": [
+    "First public beta of LockedIn.",
+    "Ambient you-vs-agent time tracking, menu bar, popover and desktop widget.",
+    "Claude usage limits (Session / Weekly / Fable) with reset times."
+  ]
+}
