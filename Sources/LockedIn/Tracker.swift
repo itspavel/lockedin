@@ -70,6 +70,13 @@ final class Tracker: ObservableObject {
     @Published var strictFocus: Bool = UserDefaults.standard.bool(forKey: "track.strict") {
         didSet { UserDefaults.standard.set(strictFocus, forKey: "track.strict") }
     }
+    /// How much the menu-bar item shows. Narrower = less likely to be swallowed by the
+    /// notch on MacBooks with a crowded menu bar (macOS hides items that fall under it).
+    @Published var menuBarStyle: MenuBarStyle =
+        MenuBarStyle(rawValue: UserDefaults.standard.string(forKey: "menubar.style") ?? "") ?? .full {
+        didSet { UserDefaults.standard.set(menuBarStyle.rawValue, forKey: "menubar.style") }
+    }
+
     /// Input older than this (seconds) counts as idle. Default 120.
     @Published var idleCutoff: TimeInterval =
         (UserDefaults.standard.object(forKey: "track.idleCutoff") as? Double) ?? 120 {

@@ -101,12 +101,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let active = tracker.humanActiveNow || !tracker.activeSessions.isEmpty
             button.image = Self.ringImage(progress: pct / 100, dimmed: !active)
         }
-        // Your focused time today (midnight–midnight), plus the session usage % when connected.
-        var title = " " + tracker.today.humanTotal.hoursCompact
-        if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
-            title += " · \(Int(p))%"
+        // Your focused time today (midnight–midnight), plus the session usage % when
+        // connected. Narrower styles exist because macOS hides menu-bar items that fall
+        // under the notch on a crowded bar.
+        switch tracker.menuBarStyle {
+        case .iconOnly:
+            button.title = ""
+        case .timeOnly:
+            button.title = " " + tracker.today.humanTotal.hoursCompact
+        case .full:
+            var title = " " + tracker.today.humanTotal.hoursCompact
+            if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
+                title += " · \(Int(p))%"
+            }
+            button.title = title
         }
-        button.title = title
     }
 
     private func symbol(_ name: String) -> NSImage? {
