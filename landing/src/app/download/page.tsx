@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { PageShell } from "@/components/page-shell";
 import { InstallTabs } from "@/components/install-tabs";
+import { DownloadButton } from "@/components/download-button";
 import { Ring } from "@/components/ring";
 
 export const metadata: Metadata = {
@@ -25,11 +26,8 @@ export default function DownloadPage() {
 
       <div className="mt-8"><InstallTabs /></div>
 
-      <a href="/download/LockedIn.dmg"
-        className="mt-5 inline-flex items-center gap-2 rounded-[10px] bg-[var(--color-green)] px-6 py-3.5 text-[15px] font-bold text-[var(--color-on-green)] transition-colors hover:bg-[var(--color-green-hi)]">
-        Download the .dmg
-      </a>
-      <p className="mt-3 text-xs text-[var(--color-dimmer)]"># apple silicon &amp; intel · macOS 14+ · no account</p>
+      <div><DownloadButton /></div>
+      <p className="mt-3 text-xs text-[var(--color-dimmer)]"># apple silicon &amp; intel · macOS 14+ · no account · right-click → Open on first launch</p>
 
       <div className="mt-14 grid gap-4 sm:grid-cols-3">
         {STEPS.map(([n, t, d]) => (
@@ -43,7 +41,9 @@ export default function DownloadPage() {
 
       <div className="mt-8 rounded-xl border border-[var(--color-line)] bg-[var(--color-panel)] px-5 py-4 text-[13px] text-[var(--color-dim)]">
         <span className="text-[var(--color-green)]">note:</span> hosted downloads are rolling out to beta users —
-        if a link isn&apos;t live yet, <a href="/#pricing" className="text-[var(--color-green)]">join the waitlist</a> and we&apos;ll email you the build.
+        if a link isn&apos;t live yet,{" "}
+        <a href="/#pricing" className="text-[var(--color-green)]">join the waitlist</a>{" "}
+        and we&apos;ll email you the build.
       </div>
     </PageShell>
   );
