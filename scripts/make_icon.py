@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate LockedIn's app icon — design option 1a "Ring Spark" (Widget Logo Options):
-a progress ring frozen at 70% with a center dot, cream on a warm coral gradient tile.
+a progress ring frozen at 70% with a center dot, green on the console dark tile.
 Outputs Resources/AppIcon.icns. No emoji, no external art — legible down to 16px."""
 import math
 import os, subprocess, tempfile
@@ -27,7 +27,7 @@ tile_w = N - 2 * margin
 tile_r = round(tile_w * 0.2237)   # macOS-ish corner radius
 
 # stops from the design: #F0906A 0% -> #D96A42 55% -> #B8512F 100%
-c0, c1, c2 = (240, 144, 106), (217, 106, 66), (184, 81, 47)
+c0, c1, c2 = (22, 29, 36), (16, 22, 28), (10, 14, 19)   # console tile: #161d24 -> #0a0e13
 grad = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 gd = ImageDraw.Draw(grad)
 for y in range(N):
