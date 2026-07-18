@@ -9,6 +9,7 @@ See the real you-vs-agent split for every project — no timers, all local.</p>
   <a href="https://landing-zeta-coral.vercel.app"><img src="https://img.shields.io/badge/website-lockedin-3FB950" alt="Website"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-blue" alt="macOS 14+">
   <img src="https://img.shields.io/badge/Swift-5.9-orange" alt="Swift">
+  <a href="https://github.com/itspavel/lockedin/releases"><img src="https://img.shields.io/badge/release-v0.2-3FB950" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
   <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-informational" alt="CI"></a>
 </p>
@@ -36,7 +37,8 @@ to know where their hours actually go — including the hours the agents put in.
 
 **[Download the DMG](https://landing-zeta-coral.vercel.app/download)** (free beta,
 macOS 14+, Apple Silicon & Intel), drag to Applications, and — until builds are
-notarized — right-click → Open on first launch.
+notarized — right-click → Open on first launch. DMGs are also attached to
+[GitHub Releases](https://github.com/itspavel/lockedin/releases).
 
 Or build from source in ~30 seconds (see below). Updates surface in-app: the menu-bar
 popover shows an "Update available" banner with release notes.
@@ -65,7 +67,11 @@ and theirs doesn't.
 - **Tokens & cost** — incremental tail-read of the Claude Code logs accrues per-model token
   usage and an estimated API-equivalent cost.
 - **Claude usage limits** — with your claude.ai session cookie, shows live Session / Weekly
-  / model-scoped (e.g. Fable) limit % and reset times.
+  / model-scoped (e.g. Fable) limit % and reset times, and **notifies you at 80% / 95%**
+  of any limit before it bites.
+- **Claude status** — polls status.claude.com and can alert when a service you use goes
+  down, so an outage never looks like your bug.
+- **Shipped today** — per-project `git` commit + line counts since midnight (numbers only).
 - **AI insights** — optional: with an Anthropic API key, Claude reads your numbers and
   tells you what they mean (peak focus hours, agent-heavy projects, pace vs limits).
 
@@ -95,11 +101,14 @@ The optional editor sensor (typed-vs-AI-generated breakdown) installs via
 
 ## Design
 
-Deep violet gradient surfaces with a single warm accent, forced dark, SF Symbols only —
-tokens live in [`Sources/LockedIn/Theme.swift`](Sources/LockedIn/Theme.swift). The
-signature element is the **split bar** (solid = you, hatched = agents); the brand mark is
-the "Ring Spark" — a progress ring at your session % with a center dot. The app icon is
-generated from code via [`scripts/make_icon.py`](scripts/make_icon.py).
+One **"Console" design system shared with the [website](https://landing-zeta-coral.vercel.app)**:
+near-black terminal surfaces, a single green accent (`#3FB950`), monospaced numerals,
+`$ command` voice, always dark. App tokens in
+[`Sources/LockedIn/Theme.swift`](Sources/LockedIn/Theme.swift) deliberately mirror the
+site's `globals.css` — change both together. The signature element is the **split bar**
+(solid green = you, green hatch = agents); the brand mark is the "Ring Spark" — a progress
+ring at your session % with a center dot. SF Symbols only, and the app icon is generated
+from code via [`scripts/make_icon.py`](scripts/make_icon.py).
 
 ## Project layout
 
@@ -111,11 +120,17 @@ generated from code via [`scripts/make_icon.py`](scripts/make_icon.py).
 | `Sources/LockedIn/Store.swift` | per-day JSON persistence, aggregates |
 | `Sources/LockedIn/ClaudeUsage.swift` | claude.ai usage limits (Session/Weekly/Fable) |
 | `Sources/LockedIn/AIInsights.swift` | Claude Messages API insights (cached per day) |
+| `Sources/LockedIn/ClaudeStatus.swift` | status.claude.com polling + outage alerts |
+| `Sources/LockedIn/GitStats.swift` | "Shipped today": commits + lines via git (counts only) |
+| `Sources/LockedIn/Updater.swift` | in-app update checks against the appcast feed |
+| `Sources/LockedIn/Notifier.swift` | notifications (UNUserNotificationCenter + fallback) |
 | `Sources/LockedIn/PopoverView.swift` | menu-bar popover |
 | `Sources/LockedIn/DesktopWidgetView.swift` | always-on desktop widget |
 | `Sources/LockedIn/DashboardView.swift` | full dashboard (Projects, Calendar, Reports, Settings) |
 
-Stage 1 (the Mirror) is built; WidgetKit widget, iOS companion, and sync are later stages.
+`landing/` is the Next.js website (terminal-themed, same design tokens); its `public/appcast.json`
+feeds in-app updates. Stage 1 (the Mirror) is built; WidgetKit widget, iOS companion, and
+sync are later stages.
 
 ## Releasing
 
