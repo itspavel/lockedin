@@ -1,4 +1,4 @@
-<p align="center"><img src="Resources/icon_1024.png" width="110" alt="LockedIn icon"></p>
+<p align="center"><img src=".github/assets/icon.png" width="110" alt="LockedIn icon"></p>
 
 <h1 align="center">LockedIn</h1>
 
