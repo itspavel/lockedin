@@ -48,7 +48,7 @@ struct DashboardView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(Theme.background)
-        .environment(\.colorScheme, .dark)   // the purple IS the surface — always dark chrome
+        .environment(\.colorScheme, .dark)   // always dark — the console surface is the brand
         .tint(Theme.accent)
         .frame(minWidth: 860, minHeight: 600)
         .task {
@@ -174,7 +174,7 @@ private struct DashboardTab: View {
 
             // Hero — your focused time; agents are a separate stat.
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(d.humanTotal.hoursCompact).font(.system(size: 52, weight: .black, design: .rounded))
+                Text(d.humanTotal.hoursCompact).font(.system(size: 52, weight: .black, design: .monospaced))
                 Text("focused today")
                     .foregroundStyle(.secondary)
                 if d.agentTotal > 0 {
@@ -425,7 +425,7 @@ private struct AgentsTab: View {
     }
     private func bigStat(_ v: String, _ l: String) -> some View {
         VStack(alignment: .leading) {
-            Text(v).font(.system(size: 30, weight: .heavy, design: .rounded))
+            Text(v).font(.system(size: 30, weight: .heavy, design: .monospaced))
             Text(l).font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -961,7 +961,7 @@ private struct StatCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Label(label, systemImage: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.system(size: 26, weight: .heavy, design: .rounded))
+            Text(value).font(.system(size: 26, weight: .heavy, design: .monospaced))
             Text(detail).font(.caption2).foregroundStyle(.secondary)
         }
         .dashCard()

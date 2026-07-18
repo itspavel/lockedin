@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         popover = NSPopover()
         popover.behavior = .transient
-        popover.appearance = NSAppearance(named: .darkAqua)   // purple-brand content, dark chrome
+        popover.appearance = NSAppearance(named: .darkAqua)   // console-brand content, dark chrome
         popover.contentSize = NSSize(width: 320, height: 460)
         popover.contentViewController = NSHostingController(
             rootView: PopoverView(tracker: tracker,
@@ -113,7 +113,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         statusItem.button?.imagePosition = .imageLeading
         statusItem.button?.action = #selector(togglePopover)
         statusItem.button?.target = self
+        // Left-click = popover, right-click = quick menu (the Stats/Ice pattern).
+        statusItem.button?.sendAction(on: [.leftMouseUp, .rightMouseUp])
     }
+
+    /// Right-click quick menu on the status item.
+    private func showQuickMenu() {
+        let menu = NSMenu()
+        menu.addItem(withTitle: "Open Dashboard", action: #selector(menuOpenDashboard), keyEquivalent: "d").target = self
+        menu.addItem(withTitle: widget.isVisible ? "Hide Desktop Widget" : "Show Desktop Widget",
+                     action: #selector(menuToggleWidget), keyEquivalent: "w").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Settings…", action: #selector(menuOpenSettings), keyEquivalent: ",").target = self
+        menu.addItem(.separator())
+        menu.addItem(withTitle: "Quit LockedIn", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil            // detach so left-click keeps opening the popover
+    }
+
+    @objc private func menuOpenDashboard() { dashboard.show() }
+    @objc private func menuToggleWidget() { widget.toggle() }
+    @objc private func menuOpenSettings() { dashboard.show(tab: .settings) }
 
     /// Notch rescue: removing and recreating the item re-inserts it at the front of the
     /// visible section (beside the notch) — the only reposition mechanism macOS allows.
@@ -257,6 +278,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func togglePopover() {
         guard let button = statusItem.button else { return }
+        if NSApp.currentEvent?.type == .rightMouseUp {
+            showQuickMenu()
+            return
+        }
         if popover.isShown {
             popover.performClose(nil)
             return

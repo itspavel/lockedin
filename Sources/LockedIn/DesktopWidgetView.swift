@@ -20,6 +20,17 @@ struct DesktopWidgetView: View {
         .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
         .contentShape(Rectangle())
+        .contextMenu {
+            Button("Open Dashboard") { onOpenDashboard() }
+            Button(tracker.widgetPinned ? "Unpin (sit behind apps)" : "Pin above all windows") {
+                tracker.toggleWidgetPin()
+            }
+            Menu("Size") {
+                ForEach(WidgetSize.allCases) { s in
+                    Button(s.label) { tracker.setWidgetSize(s) }
+                }
+            }
+        }
         .gesture(
             // We ignore the translation and let the controller move the window using the
             // absolute mouse position — translation is measured in a frame that moves with
@@ -98,7 +109,7 @@ struct DesktopWidgetView: View {
         case .total:
             HStack(alignment: .firstTextBaseline, spacing: 5) {
                 Text(d.humanTotal.hoursCompact)
-                    .font(.system(size: size == .small ? 34 : 44, weight: .heavy, design: .rounded))
+                    .font(.system(size: size == .small ? 34 : 44, weight: .heavy, design: .monospaced))
                     .contentTransition(.numericText())
                 Text("focused").font(size == .small ? .caption : .callout).foregroundStyle(.secondary)
             }
@@ -216,7 +227,7 @@ struct DesktopWidgetView: View {
                 controls
             }
             Text(tracker.lockRemaining.countdown)
-                .font(.system(size: size == .small ? 36 : 44, weight: .heavy, design: .rounded)).monospacedDigit()
+                .font(.system(size: size == .small ? 36 : 44, weight: .heavy, design: .monospaced)).monospacedDigit()
                 .contentTransition(.numericText())
                 .opacity(tracker.lockPaused ? 0.5 : 1)
             Text(tracker.lockPaused ? "paused" : "locked in")

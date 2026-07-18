@@ -41,7 +41,7 @@ cx = cy = N / 2
 R = tile_w * (26 / 120)            # ring radius
 sw = tile_w * (7 / 120)            # stroke width
 dot_r = tile_w * (7 / 120)         # center dot radius
-cream = (255, 244, 235)
+cream = (63, 185, 80)   # console green
 
 layer = Image.new("RGBA", (N, N), (0, 0, 0, 0))
 ld = ImageDraw.Draw(layer)
@@ -50,7 +50,7 @@ def ring_bbox(radius):
     return (cx - radius, cy - radius, cx + radius, cy + radius)
 
 # track: full circle, cream at 28%
-ld.ellipse(ring_bbox(R + sw / 2), outline=cream + (71,), width=round(sw))
+ld.ellipse(ring_bbox(R + sw / 2), outline=(255, 255, 255, 36), width=round(sw))
 
 # progress: 70% sweep from 12 o'clock, clockwise, round caps
 start, sweep = 270, 0.70 * 360

@@ -50,7 +50,7 @@ private struct PassiveView: View {
             // The one dominant number — YOUR focused time today (midnight–midnight).
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(d.humanTotal.hoursCompact)
-                    .font(.system(size: 38, weight: .heavy, design: .rounded))
+                    .font(.system(size: 38, weight: .heavy, design: .monospaced))
                     .fixedSize()                       // never truncate the headline number
                     .contentTransition(.numericText())
                 Text("focused").font(.callout).foregroundStyle(.secondary).fixedSize()
@@ -220,7 +220,7 @@ private struct LockedInView: View {
                     .overlay(Capsule().strokeBorder(.secondary, lineWidth: 1))
             }
             Text(tracker.lockRemaining.countdown)
-                .font(.system(size: 48, weight: .heavy, design: .rounded))
+                .font(.system(size: 48, weight: .heavy, design: .monospaced))
                 .monospacedDigit()
                 .contentTransition(.numericText())
                 .opacity(tracker.lockPaused ? 0.5 : 1)

@@ -17,12 +17,12 @@ struct ShareCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text("DAY \(day) — \(project.uppercased())")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .tracking(2)
                 .foregroundStyle(.secondary)
 
             Text(total.hoursCompact)
-                .font(.system(size: 64, weight: .black, design: .rounded))
+                .font(.system(size: 64, weight: .black, design: .monospaced))
 
             Text("locked in · you \(human.hoursCompact) + agents \(agent.hoursCompact)")
                 .font(.system(size: 15, weight: .semibold))
@@ -63,7 +63,7 @@ struct ShareCard: View {
 
     private func badge(_ symbol: String, _ text: String) -> some View {
         Label(text, systemImage: symbol)
-            .font(.system(size: 12, weight: .bold, design: .rounded))
+            .font(.system(size: 12, weight: .bold, design: .monospaced))
             .padding(.horizontal, 12).padding(.vertical, 8)
             .overlay(Capsule().strokeBorder(Color.primary.opacity(0.5), lineWidth: 1.5))
     }
