@@ -25,7 +25,7 @@ struct UsageLimit: Identifiable {
 }
 
 /// Live Claude usage limits, fetched from claude.ai with the user's own session cookie.
-/// Stored in Keychain, least-access: only the orgs + usage endpoints are called.
+/// Least-access: only the orgs + usage endpoints are ever called.
 @MainActor
 final class UsageManager: ObservableObject {
     static let shared = UsageManager()
@@ -45,8 +45,7 @@ final class UsageManager: ObservableObject {
     }
 
     private var timer: Timer?
-    // Stored in app prefs (not Keychain) so it survives rebuilds with no prompt. It's a
-    // personal token on your own Mac; hardens to Keychain when the app is signed for release.
+    // App prefs, not Keychain — ad-hoc re-signing would re-prompt every rebuild.
     private var sessionKey: String? { UserDefaults.standard.string(forKey: cookieKey) }
 
     func start() {
@@ -59,8 +58,7 @@ final class UsageManager: ObservableObject {
         timer = t
     }
 
-    /// Accepts either a bare sessionKey or the whole pasted Cookie string, and keeps only
-    /// the sessionKey value (stored in Keychain — never the rest of the cookie).
+    /// Accepts a bare sessionKey or a whole pasted Cookie string; keeps only the sessionKey.
     func connect(_ raw: String) {
         let key = Self.extractSessionKey(raw)
         if key.isEmpty { UserDefaults.standard.removeObject(forKey: cookieKey) }

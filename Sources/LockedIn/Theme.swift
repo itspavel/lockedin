@@ -1,9 +1,7 @@
 import SwiftUI
 
-/// Design tokens. SF Symbols only — no emoji anywhere in the UI (user rule).
-/// Utility-app palette (CleanMyMac-inspired, approved 2026-07-14): deep violet gradient
-/// surfaces, soft white-on-purple cards, one warm yellow accent for CTAs and hero data.
-/// Everything renders in forced dark scheme — the purple IS the brand surface.
+/// Design tokens. SF Symbols only, no emoji. Deep violet surfaces + one warm yellow
+/// accent, always dark — the purple is the brand surface.
 enum Theme {
     // Surfaces
     static let bgTop = Color(red: 0.216, green: 0.145, blue: 0.400)     // deep violet

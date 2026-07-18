@@ -45,10 +45,8 @@ final class AgentMonitor: @unchecked Sendable {
         let ageSeconds: TimeInterval
     }
 
-    /// One directory scan → (per-project active agents with counts, every live session,
-    /// recently-touched projects). Both callers share this so we walk the dir once per tick.
-    /// Sessions are NOT deduped: N parallel agents in one project = N sessions, so their
-    /// time accrues combined (the share-card stat reflects total agent work, not wall clock).
+    /// One directory walk per tick → active agents, live sessions, recent projects.
+    /// Parallel sessions are kept separate so agent time accrues combined.
     func scan() -> (active: [ActiveAgent], sessions: [AgentSession], recent: [RecentProject]) {
         let fm = FileManager.default
         guard let dirs = try? fm.contentsOfDirectory(at: projectsDir, includingPropertiesForKeys: nil) else { return ([], [], []) }
@@ -106,12 +104,9 @@ final class AgentMonitor: @unchecked Sendable {
         }
     }
 
-    /// Accrue token usage AND prompt counts from newly-appended JSONL lines. Tracks a byte
-    /// offset per session file so we parse only NEW bytes each tick — never the whole log
-    /// (they reach hundreds of MB). On first sight of a today-modified file we backfill only
-    /// a bounded tail (today's activity is at the end), so startup stays cheap and bounded.
-    /// Privacy: reads usage counts, model, cwd, and prompt markers only — never content.
-    /// Runs off the main thread; the caller merges the deltas on the main actor.
+    /// Incremental token + prompt accrual: byte-offset per file, only new bytes parsed
+    /// (logs reach 100s of MB). First sight of a today-file backfills a bounded tail.
+    /// Privacy: counts/model/cwd only — never content.
     func accrueTokens() -> (tokens: [String: [String: TokenCounts]], prompts: Int) {
         var deltas: [String: [String: TokenCounts]] = [:]
         var prompts = 0
@@ -222,8 +217,7 @@ final class AgentMonitor: @unchecked Sendable {
         return (displayName(for: cwd), model, c, ts)
     }
 
-    /// Paths we never track — scratch/throwaway locations that aren't real projects.
-    /// Keeps the project list clean (no "tmp" noise from test runs or one-off scripts).
+    /// Scratch locations that never count as projects.
     static func isJunk(path: String) -> Bool {
         let p = path.hasSuffix("/") ? String(path.dropLast()) : path
         let leaf = (p as NSString).lastPathComponent.lowercased()
@@ -235,8 +229,7 @@ final class AgentMonitor: @unchecked Sendable {
         return false
     }
 
-    /// Folder names too generic to identify a project on their own. For these we prepend
-    /// the parent so `~/work/foo/frontend` shows as "foo/frontend", not a colliding "frontend".
+    /// Generic leaf names get the parent prefixed ("foo/frontend", not "frontend").
     private static let genericLeaves: Set<String> = [
         "src", "app", "apps", "web", "www", "frontend", "backend", "client", "server",
         "api", "lib", "packages", "code", "main", "core", "project",
@@ -252,9 +245,7 @@ final class AgentMonitor: @unchecked Sendable {
         return leaf
     }
 
-    /// Last "cwd" value in the file, read from the tail (max 64 KB). Cached per file and
-    /// reused — a session file's cwd is stable, so we never re-read the tail after the
-    /// first time (this alone was ~14 MB of tail reads every tick with hundreds of files).
+    /// Last "cwd" in the file (64 KB tail read), cached — a session's cwd is stable.
     private func lastCwd(in file: URL) -> String? {
         if let cached = cwdCache[file.path] { return cached }
         guard let handle = try? FileHandle(forReadingFrom: file) else { return cwdCache[file.path] }

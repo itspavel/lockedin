@@ -85,8 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget?.savePosition()
     }
 
-    /// True when the status item's window sits under the MacBook notch (macOS hides it
-    /// there but still gives it a frame). Checked against the screen's usable top areas.
+    /// True when the status item landed under the notch (outside both usable top areas).
     private func statusItemHiddenByNotch() -> Bool {
         guard let win = statusItem.button?.window,
               let screen = win.screen ?? NSScreen.main,
@@ -101,8 +100,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var notchNotified = false
 
-    /// If the item got pushed under the notch, degrade to icon-only so it fits back into
-    /// the visible area — and tell the user once so it isn't mysterious.
+    /// Under the notch → shrink to icon-only and tell the user once.
     private func degradeIfUnderNotch() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self, self.statusItemHiddenByNotch(),
@@ -193,8 +191,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return img
     }
 
-    /// Accessory apps get no default menu, so standard editing shortcuts (Cmd+V/C/X/A/Z)
-    /// don't reach text fields. Install a minimal Edit menu to enable them.
+    /// Accessory apps get no menu — install Edit so Cmd+V/C/X/A/Z work in text fields.
     private func setupMainMenu() {
         let main = NSMenu()
 
@@ -225,8 +222,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
             return
         }
-        // Activate first — for a Dock-less accessory app the first click otherwise just
-        // activates the app and the transient popover dismisses itself, so it "misses".
+        // Activate first, or the first click only activates and the popover self-dismisses.
         NSApp.activate(ignoringOtherApps: true)
         popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         popover.contentViewController?.view.window?.makeKeyAndOrderFront(nil)

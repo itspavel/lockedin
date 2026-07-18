@@ -8,9 +8,7 @@ import UserNotifications
 @MainActor
 final class Tracker: ObservableObject {
     static let interval: TimeInterval = 5
-    /// How recently an agent must have worked for "reading/thinking" time to still count
-    /// as focus on that project. 5 min so flipping to another window/monitor while an agent
-    /// runs doesn't pause the clock; still auto-stops once the session goes truly cold.
+    /// Grace window: agent activity within this keeps "reading/thinking" time counting.
     static let sessionHotWindow: TimeInterval = 300
 
     // Published snapshot the menu bar binds to.
@@ -64,14 +62,11 @@ final class Tracker: ObservableObject {
     @Published var widgetConfig: WidgetConfig = .load()
     func updateWidgetConfig(_ cfg: WidgetConfig) { widgetConfig = cfg; cfg.save() }
 
-    /// Tracking sensitivity. Strict = focus counts only on real input (typing/clicking in a
-    /// dev app). Engaged (default) also counts reading/thinking while a dev app is frontmost
-    /// and an agent ran in the last few minutes.
+    /// Strict = input only; Engaged (default) also counts reading during agent runs.
     @Published var strictFocus: Bool = UserDefaults.standard.bool(forKey: "track.strict") {
         didSet { UserDefaults.standard.set(strictFocus, forKey: "track.strict") }
     }
-    /// How much the menu-bar item shows. Narrower = less likely to be swallowed by the
-    /// notch on MacBooks with a crowded menu bar (macOS hides items that fall under it).
+    /// Menu-bar item width; narrower survives the notch on crowded bars.
     @Published var menuBarStyle: MenuBarStyle =
         MenuBarStyle(rawValue: UserDefaults.standard.string(forKey: "menubar.style") ?? "") ?? .full {
         didSet { UserDefaults.standard.set(menuBarStyle.rawValue, forKey: "menubar.style") }
@@ -134,9 +129,7 @@ final class Tracker: ObservableObject {
         objectWillChange.send()
     }
 
-    /// 1-second timer: decrements the countdown smoothly and refreshes the UI/menu bar
-    /// while a focus session runs. Separate from the 5s tracking tick so the timer is
-    /// smooth without sampling the monitors every second.
+    /// 1s countdown timer while locked — separate from the 5s tick so it stays smooth.
     private func startDisplayTimer() {
         stopDisplayTimer()
         let t = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
@@ -161,10 +154,8 @@ final class Tracker: ObservableObject {
 
     private var ticking = false
 
-    /// Scheduler: the heavy file scanning runs OFF the main thread so the UI (menu bar,
-    /// popover, widget) stays responsive even with huge Claude logs. Results are applied
-    /// back on the main actor. A reentrancy guard skips a tick if the previous I/O is
-    /// still running (so calls to the monitor are never concurrent).
+    /// Heavy file I/O runs off-main; results apply on the main actor. The reentrancy
+    /// guard keeps monitor calls serial.
     private func tick() {
         rolloverIfNeeded()
         guard !ticking else { return }
@@ -196,8 +187,7 @@ final class Tracker: ObservableObject {
         if let k = beat?.keystrokes { editorKeystrokes = k }
         if let g = beat?.generated { editorGenerated = g }
 
-        // "Engaged in a live session": not typing, but a dev app is frontmost and an agent
-        // worked moments ago — you're reading output / thinking. Auto-stops when it goes cold.
+        // "Engaged": dev app frontmost + agent ran recently = reading/thinking counts.
         let freshestAgentAge = recent.first?.ageSeconds ?? .infinity
         let inputActive = human.isDevApp && human.idleSeconds < idleCutoff
         // The "engaged" grace (reading/thinking during an agent run) only applies off strict mode.

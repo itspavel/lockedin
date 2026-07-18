@@ -1,13 +1,9 @@
 import Foundation
 import AppKit
 
-/// Lightweight update checker. Polls a JSON "appcast" for the latest version and, when a
-/// newer one exists, surfaces an in-app banner + a one-time notification with the release
-/// notes ("what's new"). Clicking Update opens the new DMG to install.
-///
-/// Note: this is a check-and-download flow, not silent in-place update. True one-click
-/// Sparkle updates need a stable Developer-ID signature (Apple Developer account); our
-/// ad-hoc signature changes each build, which Sparkle rejects. Slot Sparkle in once signed.
+/// Update checker: polls a JSON appcast; on a newer version shows a banner + one-time
+/// notification with release notes. Check-and-download only — Sparkle needs a stable
+/// Developer ID signature.
 @MainActor
 final class Updater: ObservableObject {
     static let shared = Updater()

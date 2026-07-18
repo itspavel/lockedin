@@ -2,12 +2,9 @@ import AppKit
 import SwiftUI
 import Combine
 
-/// A draggable desktop widget. Borderless non-activating panel so it never steals focus
-/// and shows on every Space. By default it sits behind your apps; pin it to float above
-/// everything. The "widget on the desktop" without WidgetKit (so: no Xcode required).
-///
-/// Dragging is done with a SwiftUI gesture (minimumDistance), NOT
-/// isMovableByWindowBackground — the latter swallows button taps (pin/pause/stop).
+/// Draggable desktop widget: borderless non-activating panel, on every Space.
+/// Unpinned it sits behind apps; pinned it floats. Dragged via SwiftUI gesture —
+/// isMovableByWindowBackground would swallow button taps.
 @MainActor
 final class WidgetWindowController {
     private let panel: NSPanel
@@ -84,9 +81,8 @@ final class WidgetWindowController {
     }
 
     private func sizeToContent() {
-        // Measure with a fresh, UNCONSTRAINED hosting view. The live host is pinned to fill
-        // the window by Auto Layout, so its fittingSize just echoes the current width and the
-        // window never grows. A throwaway view reports the SwiftUI content's true ideal size.
+        // Measure with a fresh unconstrained hosting view — the live host echoes its
+        // current size and would never grow.
         let measure = NSHostingView(rootView: DesktopWidgetView(tracker: tracker))
         measure.layoutSubtreeIfNeeded()
         let fit = measure.fittingSize
@@ -100,8 +96,7 @@ final class WidgetWindowController {
 
     // MARK: - Drag (gesture-driven)
 
-    /// Move the window by tracking the absolute screen mouse position. Stable because the
-    /// reference (NSEvent.mouseLocation) doesn't move with the window — no feedback, no lag.
+    /// Drag via absolute mouse position — window-relative deltas feed back and lag.
     private func drag() {
         let mouse = NSEvent.mouseLocation
         if dragStartMouse == nil { dragStartMouse = mouse; dragStartOrigin = panel.frame.origin }
