@@ -92,11 +92,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    /// True when the status item landed under the notch. Hidden items may get NO window
-    /// at all — on a notched screen that absence is itself the signal.
+    /// True when the whole menu bar is on screen (Control Centre always has an item).
+    /// Full-screen apps, the lock screen, and Space transitions hide the entire bar —
+    /// in those states our item having no window means nothing.
+    private func menuBarOnScreen() -> Bool {
+        let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        for w in list {
+            if let owner = w["kCGWindowOwnerName"] as? String,
+               owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer",
+               let b = w["kCGWindowBounds"] as? [String: Any],
+               let y = b["Y"] as? Double, y < 2,
+               let h = b["Height"] as? Double, h < 45 {
+                return true
+            }
+        }
+        return false
+    }
+
+    /// True when the status item landed under the notch. A missing item window only
+    /// counts as hidden while the menu bar itself is visible — otherwise full-screen
+    /// apps would trigger false rescues that yank a healthy item into the overflow.
     private func statusItemHiddenByNotch() -> Bool {
         guard let screen = NSScreen.main, screen.safeAreaInsets.top > 0 else { return false }
-        guard let win = statusItem.button?.window, win.isVisible else { return true }
+        guard let win = statusItem.button?.window, win.isVisible else {
+            return menuBarOnScreen()
+        }
         let midX = win.frame.midX
         let inArea: (NSRect?) -> Bool = { area in
             guard let a = area else { return false }
@@ -145,7 +165,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func rescueFromNotch() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
             guard let self else { return }
-            guard self.statusItemHiddenByNotch() else { self.notchHiddenStreak = 0; return }
+            guard self.statusItemHiddenByNotch() else {
+                self.notchHiddenStreak = 0
+                self.notchRescueAttempts = 0   // healthy again — re-arm future rescues
+                return
+            }
             self.notchHiddenStreak += 1
             guard self.notchHiddenStreak >= 2 else { return }
 
