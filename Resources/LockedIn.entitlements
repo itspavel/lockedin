@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Hardened-runtime entitlements for Developer ID (direct) distribution.
+       LockedIn needs no exceptions: no JIT, no unsigned memory, no library injection.
+       The App Sandbox is intentionally NOT enabled — the app's core function is reading
+       Claude Code's local session logs (~/.claude/projects) and running `git` for repo
+       stats, which the sandbox forbids. Sandbox is optional outside the Mac App Store. -->
+</dict>
+</plist>

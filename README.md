@@ -1,14 +1,41 @@
-# LockedIn
+<p align="center"><img src="Resources/icon_1024.png" width="110" alt="LockedIn icon"></p>
 
-**An ambient, zero-input time tracker for the AI era.** LockedIn is a macOS menu-bar
-app that passively splits each project's day between *you* and *your AI coding agents* —
-no timers to start, no buttons to press. It lives where your eyes already are: the menu
-bar and an always-on desktop widget.
+<h1 align="center">LockedIn</h1>
+
+<p align="center"><b>An ambient, zero-input time tracker for the AI era.</b><br>
+See the real you-vs-agent split for every project — no timers, all local.</p>
+
+<p align="center">
+  <a href="https://landing-zeta-coral.vercel.app"><img src="https://img.shields.io/badge/website-lockedin-3FB950" alt="Website"></a>
+  <img src="https://img.shields.io/badge/macOS-14%2B-blue" alt="macOS 14+">
+  <img src="https://img.shields.io/badge/Swift-5.9-orange" alt="Swift">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
+  <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-informational" alt="CI"></a>
+</p>
+
+LockedIn is a macOS menu-bar app that passively splits each project's day between *you*
+and *your AI coding agents* — no timers to start, no buttons to press. It lives where
+your eyes already are: the menu bar and an always-on desktop widget. It also watches
+your **Claude usage limits** (Session / Weekly / Fable) live, with reset times, so you
+never hit a wall mid-ship.
 
 Built for indie hackers and solo builders who ship with Cursor and Claude Code and want
 to know where their hours actually go — including the hours the agents put in.
 
-<p align="center"><img src="Resources/icon_1024.png" width="128" alt="LockedIn icon"></p>
+| Popover | Desktop widget |
+|---|---|
+| ![Popover](.github/assets/popover.png) | ![Widget](.github/assets/widget.png) |
+
+![Dashboard](.github/assets/dashboard.png)
+
+## Install
+
+**[Download the DMG](https://landing-zeta-coral.vercel.app/download)** (free beta,
+macOS 14+, Apple Silicon & Intel), drag to Applications, and — until builds are
+notarized — right-click → Open on first launch.
+
+Or build from source in ~30 seconds (see below). Updates surface in-app: the menu-bar
+popover shows an "Update available" banner with release notes.
 
 ## Why
 
@@ -85,3 +112,19 @@ generated from code via [`scripts/make_icon.py`](scripts/make_icon.py).
 | `Sources/LockedIn/DashboardView.swift` | full dashboard (Projects, Calendar, Reports, Settings) |
 
 Stage 1 (the Mirror) is built; WidgetKit widget, iOS companion, and sync are later stages.
+
+## Releasing
+
+Releases ship as a notarized Developer ID DMG (direct download — the Mac App Store's
+sandbox forbids this app's core function). The full pipeline is one command:
+`SIGN_IDENTITY=... ./scripts/release.sh` — see [docs/RELEASE.md](docs/RELEASE.md).
+
+## Contributing
+
+PRs welcome — start with [CONTRIBUTING.md](CONTRIBUTING.md). The two hard rules:
+the [privacy contract](#privacy-contract) (never read log *content*) and SF Symbols
+only, no emoji. Security reports: [SECURITY.md](SECURITY.md) (privately, please).
+
+## License
+
+[MIT](LICENSE) © 2026 Pavel Tarasov

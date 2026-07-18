@@ -1,0 +1,20 @@
+name: Feature request
+description: An idea that would make LockedIn better
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the situation where you missed this feature.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Tracking accuracy, Widget, Popover, Dashboard, Claude limits, AI insights, Landing site, Other]

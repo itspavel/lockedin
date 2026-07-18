@@ -439,6 +439,16 @@ private struct SettingsTab: View {
                 TrackedAppsList()
             }
 
+            section("Menu bar") {
+                Picker("Show", selection: Binding(
+                    get: { tracker.menuBarStyle }, set: { tracker.menuBarStyle = $0 })) {
+                    ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
+                }.pickerStyle(.segmented)
+                Text("On MacBooks with a notch, macOS hides menu-bar items that fall under it when the bar is crowded. A narrower item is far less likely to disappear — pick **Icon only** if LockedIn vanishes. (You can also ⌘-drag items along the menu bar to reorder them.)")
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             section("Desktop widget") {
                 // Live preview — updates as you change size and toggles.
                 HStack {
@@ -504,16 +514,6 @@ private struct SettingsTab: View {
                         }
                     }
                 }
-            }
-
-            section("Menu bar") {
-                Picker("Show", selection: Binding(
-                    get: { tracker.menuBarStyle }, set: { tracker.menuBarStyle = $0 })) {
-                    ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
-                }.pickerStyle(.segmented)
-                Text("On MacBooks with a notch, macOS hides menu-bar items that fall under it when the bar is crowded. A narrower item is far less likely to disappear — pick **Icon only** if LockedIn vanishes. (You can also ⌘-drag items along the menu bar to reorder them.)")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
             section("Software update") {
