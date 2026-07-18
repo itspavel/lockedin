@@ -117,6 +117,13 @@ private struct PassiveView: View {
                 Menu {
                     Toggle("Launch at login", isOn: $loginEnabled)
                     Divider()
+                    Button("Buy me a coffee") {
+                        if let u = URL(string: "https://buymeacoffee.com/itspavel") { NSWorkspace.shared.open(u) }
+                    }
+                    Button("Report a bug") {
+                        if let u = URL(string: "https://github.com/itspavel/lockedin/issues/new?template=bug_report.yml") { NSWorkspace.shared.open(u) }
+                    }
+                    Divider()
                     Button("Quit LockedIn") { NSApp.terminate(nil) }
                 } label: {
                     Image(systemName: "ellipsis").frame(width: 32, height: 30).contentShape(Rectangle())

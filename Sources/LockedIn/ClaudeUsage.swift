@@ -90,8 +90,27 @@ final class UsageManager: ObservableObject {
             let usage = try await fetchUsage(org: org, key: key)
             session = usage.0; weekly = usage.1; limits = usage.2
             error = nil; lastChecked = Date()
+            notifyOnThresholds()
         } catch {
             self.error = (error as? UsageError)?.message ?? error.localizedDescription
+        }
+    }
+
+    /// Fire a notification when a limit crosses 80% / 95% — once per threshold per
+    /// window (keyed by the window's reset time, so a new window re-arms the alert).
+    private func notifyOnThresholds() {
+        guard UserDefaults.standard.object(forKey: "limits.notify") as? Bool ?? true else { return }
+        for l in limits {
+            let windowKey = "\(l.label)-\(Int(l.resetsAt?.timeIntervalSince1970 ?? 0))"
+            for threshold in [80.0, 95.0] where l.percent >= threshold {
+                let seenKey = "limits.notified.\(windowKey)-\(Int(threshold))"
+                guard !UserDefaults.standard.bool(forKey: seenKey) else { continue }
+                UserDefaults.standard.set(true, forKey: seenKey)
+                let resetStr = l.resetsAt.map { " · resets \($0.untilCompact)" } ?? ""
+                Notifier.send("\(l.label) limit at \(Int(l.percent))%",
+                              threshold >= 95 ? "Almost out — pace yourself\(resetStr)."
+                                              : "Heads up: \(Int(l.percent))% used\(resetStr).")
+            }
         }
     }
 

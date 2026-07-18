@@ -97,6 +97,8 @@ struct DashboardView: View {
                             "https://github.com/itspavel/lockedin/issues/new?template=bug_report.yml")
                 sidebarLink("lightbulb", "Suggest a feature",
                             "https://github.com/itspavel/lockedin/issues/new?template=feature_request.yml")
+                sidebarLink("cup.and.saucer", "Buy me a coffee",
+                            "https://buymeacoffee.com/itspavel")
             }
             .padding(.horizontal, 8)
 
@@ -472,9 +474,21 @@ private struct SettingsTab: View {
                     get: { tracker.menuBarStyle }, set: { tracker.menuBarStyle = $0 })) {
                     ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
                 }.pickerStyle(.segmented)
-                Text("On MacBooks with a notch, macOS hides menu-bar items that fall under it when the bar is crowded. A narrower item is far less likely to disappear — pick **Icon only** if LockedIn vanishes. (You can also ⌘-drag items along the menu bar to reorder them.)")
+                Text("On MacBooks with a notch, macOS hides menu-bar items that fall under it when the bar is crowded — no app can reposition its own item (a known macOS limitation; see Ice/Bartender). LockedIn auto-shrinks to icon-only when it detects it's hidden. Other fixes: ⌘-drag the item further left, use a menu-bar manager like Ice, or tighten macOS's item spacing:")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    Text(verbatim: "defaults -currentHost write -globalDomain NSStatusItemSpacing -int 6")
+                        .font(.system(size: 10, design: .monospaced)).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                        .textSelection(.enabled)
+                    Button("Copy") {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.setString("defaults -currentHost write -globalDomain NSStatusItemSpacing -int 6 && defaults -currentHost write -globalDomain NSStatusItemSelectionPadding -int 8", forType: .string)
+                    }.controlSize(.small)
+                }
+                Text("(Run in Terminal, then log out and back in. Delete the keys to restore defaults.)")
+                    .font(.caption2).foregroundStyle(.tertiary)
             }
 
             section("Desktop widget") {
@@ -520,6 +534,14 @@ private struct SettingsTab: View {
 
             section("AI insights (beta)") {
                 ConnectAI()
+            }
+
+            section("Limit alerts") {
+                Toggle("Notify me at 80% and 95% of any Claude limit", isOn: Binding(
+                    get: { UserDefaults.standard.object(forKey: "limits.notify") as? Bool ?? true },
+                    set: { UserDefaults.standard.set($0, forKey: "limits.notify") }))
+                Text("One notification per threshold per window — re-arms when the limit resets.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
 
             section("Claude status alerts") {

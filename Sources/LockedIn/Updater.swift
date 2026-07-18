@@ -31,9 +31,11 @@ final class Updater: ObservableObject {
     }
 
     /// Where the version feed lives. Overridable in Settings for testing / self-hosting.
+    /// NOTE: points at the live Vercel deployment until the lockedin.app domain is
+    /// connected — a feed on an unowned domain means updates silently never arrive.
     var feedURL: URL {
         if let s = UserDefaults.standard.string(forKey: feedKey), let u = URL(string: s) { return u }
-        return URL(string: "https://lockedin.app/appcast.json")!
+        return URL(string: "https://landing-zeta-coral.vercel.app/appcast.json")!
     }
     func setFeedURL(_ s: String) {
         let t = s.trimmingCharacters(in: .whitespacesAndNewlines)

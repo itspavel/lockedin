@@ -2,9 +2,10 @@
 
 ## Reporting a vulnerability
 
-Please **do not open a public issue** for security problems. Email
-**skullo98@gmail.com** with details and steps to reproduce. You'll get a response
-within a few days; fixes ship as fast as possible and you'll be credited if you want.
+Please **do not open a public issue** for security problems. Use GitHub's private
+reporting instead: **Security tab → Report a vulnerability** on this repository
+(github.com/itspavel/lockedin/security/advisories/new). You'll get a response within
+a few days; fixes ship as fast as possible and you'll be credited if you want.
 
 ## Scope notes
 

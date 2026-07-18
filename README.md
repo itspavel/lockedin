@@ -22,6 +22,8 @@ never hit a wall mid-ship.
 Built for indie hackers and solo builders who ship with Cursor and Claude Code and want
 to know where their hours actually go — including the hours the agents put in.
 
+<p align="center"><img src=".github/assets/tour.gif" width="640" alt="LockedIn tour — popover, desktop widget, dashboard"></p>
+
 <p align="center">
   <img src=".github/assets/popover.png" width="330" alt="Menu-bar popover — focused time, you-vs-agent split, Claude limits">
   &nbsp;&nbsp;

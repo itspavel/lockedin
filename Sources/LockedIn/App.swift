@@ -85,8 +85,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget?.savePosition()
     }
 
+    /// True when the status item's window sits under the MacBook notch (macOS hides it
+    /// there but still gives it a frame). Checked against the screen's usable top areas.
+    private func statusItemHiddenByNotch() -> Bool {
+        guard let win = statusItem.button?.window,
+              let screen = win.screen ?? NSScreen.main,
+              screen.safeAreaInsets.top > 0 else { return false }   // no notch, no problem
+        let midX = win.frame.midX
+        let inArea: (NSRect?) -> Bool = { area in
+            guard let a = area else { return false }
+            return midX >= a.minX && midX <= a.maxX
+        }
+        return !(inArea(screen.auxiliaryTopLeftArea) || inArea(screen.auxiliaryTopRightArea))
+    }
+
+    private var notchNotified = false
+
+    /// If the item got pushed under the notch, degrade to icon-only so it fits back into
+    /// the visible area — and tell the user once so it isn't mysterious.
+    private func degradeIfUnderNotch() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+            guard let self, self.statusItemHiddenByNotch(),
+                  let button = self.statusItem.button, !button.title.isEmpty else { return }
+            button.title = ""
+            if !self.notchNotified {
+                self.notchNotified = true
+                Notifier.send("LockedIn moved out from under the notch",
+                              "Your menu bar is crowded, so the item shrank to icon-only. Pick a narrower style in Settings → Menu bar, or ⌘-drag it left.")
+            }
+        }
+    }
+
     private func refreshStatusItem() {
         guard let button = statusItem.button else { return }
+        defer { degradeIfUnderNotch() }
 
         if tracker.lockActive {
             button.image = symbol(tracker.lockPaused ? "pause.fill" : "lock.fill")
