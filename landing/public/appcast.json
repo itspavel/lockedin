@@ -1,11 +1,13 @@
 {
-  "version": "0.1",
-  "date": "2026-07-15",
-  "url": "https://lockedin.app/download/LockedIn.dmg",
+  "version": "0.2",
+  "date": "2026-07-18",
+  "url": "https://landing-zeta-coral.vercel.app/download/LockedIn.dmg",
   "minSystem": "14.0",
   "notes": [
-    "First public beta of LockedIn.",
-    "Ambient you-vs-agent time tracking, menu bar, popover and desktop widget.",
-    "Claude usage limits (Session / Weekly / Fable) with reset times."
+    "New Console look — the app now matches the website: terminal surfaces, green accent, monospaced numerals, new icon.",
+    "Limit alerts: get notified at 80% and 95% of any Claude limit (Session / Weekly / Fable).",
+    "Notch fixes: the menu-bar item rescues itself from under the notch, and the widget + Dashboard stay reachable even when the bar is full.",
+    "Right-click menus on the menu-bar item and the desktop widget.",
+    "Report a bug / suggest a feature straight from the Dashboard."
   ]
 }

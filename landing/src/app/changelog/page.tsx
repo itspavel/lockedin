@@ -8,6 +8,16 @@ export const metadata: Metadata = {
 
 const RELEASES = [
   {
+    v: "0.2", date: "2026-07-18", tag: "beta",
+    notes: [
+      "New Console look — the app now matches the website: terminal surfaces, green accent, monospaced numerals, new icon.",
+      "Limit alerts at 80% / 95% of any Claude limit (Session / Weekly / Fable).",
+      "Notch fixes: the menu-bar item rescues itself from under the notch; widget + Dashboard stay reachable when the bar is full.",
+      "Right-click menus on the menu-bar item and the desktop widget.",
+      "Report a bug / suggest a feature straight from the Dashboard.",
+    ],
+  },
+  {
     v: "0.1", date: "2026-07-15", tag: "beta",
     notes: [
       "First public beta.",
