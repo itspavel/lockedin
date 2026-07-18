@@ -2,7 +2,7 @@
   "name": "lockedin-sensor",
   "displayName": "LockedIn Sensor",
   "description": "Feeds precise project, edit-activity, and keystroke signal to the LockedIn time tracker.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "lockedin",
   "engines": { "vscode": "^1.75.0" },
   "categories": ["Other"],
