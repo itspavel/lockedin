@@ -7,6 +7,7 @@ struct DesktopWidgetView: View {
     @ObservedObject private var usage = UsageManager.shared
     var onDrag: () -> Void = {}
     var onDragEnd: () -> Void = {}
+    var onOpenDashboard: () -> Void = {}
 
     private var size: WidgetSize { tracker.widgetSize }
 
@@ -246,8 +247,15 @@ struct DesktopWidgetView: View {
 
     private var header: some View {
         HStack(spacing: 7) {
-            BrandMark(size: 13)
-            Text("TODAY").font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(.secondary)
+            Button(action: onOpenDashboard) {
+                HStack(spacing: 7) {
+                    BrandMark(size: 13)
+                    Text("TODAY").font(.caption2.weight(.bold)).tracking(1.5).foregroundStyle(.secondary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Open Dashboard")
             Spacer()
             if tracker.editorConnected || !tracker.activeSessions.isEmpty || tracker.humanActiveNow {
                 Circle().fill(.green).frame(width: 7, height: 7)

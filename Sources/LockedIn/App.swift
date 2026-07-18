@@ -39,15 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget = WidgetWindowController(tracker: tracker)
         widget.restoreVisibility()
         dashboard = DashboardWindowController(tracker: tracker)
+        widget.onOpenDashboard = { [weak self] in self?.dashboard.show() }
 
         StatusMonitor.shared.start()
         UsageManager.shared.start()
         Updater.shared.start()
 
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        statusItem.button?.imagePosition = .imageLeading
-        statusItem.button?.action = #selector(togglePopover)
-        statusItem.button?.target = self
+        makeStatusItem()
 
         popover = NSPopover()
         popover.behavior = .transient
@@ -85,11 +83,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         widget?.savePosition()
     }
 
-    /// True when the status item landed under the notch (outside both usable top areas).
+    /// Relaunching from Finder/Spotlight opens the dashboard — the escape hatch when the
+    /// menu-bar item is swallowed by a crowded bar/notch.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        dashboard.show()
+        return true
+    }
+
+    /// True when the status item landed under the notch. Hidden items may get NO window
+    /// at all — on a notched screen that absence is itself the signal.
     private func statusItemHiddenByNotch() -> Bool {
-        guard let win = statusItem.button?.window,
-              let screen = win.screen ?? NSScreen.main,
-              screen.safeAreaInsets.top > 0 else { return false }   // no notch, no problem
+        guard let screen = NSScreen.main, screen.safeAreaInsets.top > 0 else { return false }
+        guard let win = statusItem.button?.window, win.isVisible else { return true }
         let midX = win.frame.midX
         let inArea: (NSRect?) -> Bool = { area in
             guard let a = area else { return false }
@@ -99,24 +104,58 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private var notchNotified = false
+    private var notchHiddenStreak = 0
+    private var notchRescueAttempts = 0
 
-    /// Under the notch → shrink to icon-only and tell the user once.
-    private func degradeIfUnderNotch() {
+    private func makeStatusItem() {
+        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        statusItem.autosaveName = "LockedIn"   // macOS keys the item's position on this
+        statusItem.button?.imagePosition = .imageLeading
+        statusItem.button?.action = #selector(togglePopover)
+        statusItem.button?.target = self
+    }
+
+    /// Notch rescue: removing and recreating the item re-inserts it at the front of the
+    /// visible section (beside the notch) — the only reposition mechanism macOS allows.
+    /// Debounced (two consecutive hidden checks, so launch races don't misfire) and
+    /// retried up to 3 times; after that, icon-only.
+    private func rescueFromNotch() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self, self.statusItemHiddenByNotch(),
-                  let button = self.statusItem.button, !button.title.isEmpty else { return }
-            button.title = ""
-            if !self.notchNotified {
-                self.notchNotified = true
-                Notifier.send("LockedIn moved out from under the notch",
-                              "Your menu bar is crowded, so the item shrank to icon-only. Pick a narrower style in Settings → Menu bar, or ⌘-drag it left.")
+            guard let self else { return }
+            guard self.statusItemHiddenByNotch() else { self.notchHiddenStreak = 0; return }
+            self.notchHiddenStreak += 1
+            guard self.notchHiddenStreak >= 2 else { return }
+
+            guard self.notchRescueAttempts < 3 else {
+                self.statusItem.button?.title = ""
+                if !self.notchNotified {
+                    self.notchNotified = true
+                    if !self.widget.isVisible { self.widget.show() }
+                    Notifier.send("Your menu bar is full — LockedIn can't fit",
+                                  "Stats stay on the desktop widget (tap it for the Dashboard), or launch LockedIn again from Spotlight. Freeing menu-bar space brings the item back.")
+                }
+                return
+            }
+            self.notchRescueAttempts += 1
+            self.notchHiddenStreak = 0
+
+            NSStatusBar.system.removeStatusItem(self.statusItem)
+            self.makeStatusItem()
+            self.refreshStatusItem()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if !self.statusItemHiddenByNotch(), !self.notchNotified {
+                    self.notchNotified = true
+                    Notifier.send("LockedIn moved out from under the notch",
+                                  "Your menu bar was crowded, so it relocated next to the notch. ⌘-drag to move it anywhere.")
+                }
             }
         }
     }
 
     private func refreshStatusItem() {
         guard let button = statusItem.button else { return }
-        defer { degradeIfUnderNotch() }
+        defer { rescueFromNotch() }
 
         if tracker.lockActive {
             button.image = symbol(tracker.lockPaused ? "pause.fill" : "lock.fill")

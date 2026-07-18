@@ -9,6 +9,7 @@ import Combine
 final class WidgetWindowController {
     private let panel: NSPanel
     private let tracker: Tracker
+    var onOpenDashboard: () -> Void = {}
     private let posKey = "widget.frameOrigin"
     private let visKey = "widget.visible"
     private var cancellables = Set<AnyCancellable>()
@@ -59,7 +60,8 @@ final class WidgetWindowController {
         let root = DesktopWidgetView(
             tracker: tracker,
             onDrag: { [weak self] in self?.drag() },
-            onDragEnd: { [weak self] in self?.endDrag() }
+            onDragEnd: { [weak self] in self?.endDrag() },
+            onOpenDashboard: { [weak self] in self?.onOpenDashboard() }
         )
         let host = NSHostingView(rootView: root)
         host.translatesAutoresizingMaskIntoConstraints = false
