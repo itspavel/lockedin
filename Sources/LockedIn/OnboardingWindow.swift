@@ -100,6 +100,7 @@ struct OnboardingView: View {
         .padding(26)
         .frame(width: 460)
         .background(Theme.background)
+        .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
     }

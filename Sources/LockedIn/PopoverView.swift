@@ -19,6 +19,7 @@ struct PopoverView: View {
         .padding(18)
         .frame(width: 320)
         .background(Theme.background)
+        .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
         .sheet(isPresented: $showShareSheet) {
@@ -145,7 +146,7 @@ private struct PassiveView: View {
     /// A compact Claude-usage limit row: label, a capsule that warns as it fills, percent.
     private func usageRow(_ limit: UsageLimit) -> some View {
         let pct = limit.percent
-        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
+        let fill = Theme.limitColor(limit.label, percent: pct)
         return HStack(spacing: 8) {
             Text(limit.label).font(.caption2.weight(limit.active ? .bold : .medium))
                 .foregroundStyle(limit.active ? .primary : .secondary)
@@ -247,7 +248,7 @@ private struct LiveBadge: View {
     let active: Bool
     var body: some View {
         HStack(spacing: 5) {
-            Circle().fill(active ? Color.green : Color.secondary).frame(width: 7, height: 7)
+            PulsingDot(active: active)
             Text(active ? "LIVE" : "IDLE").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
         }
     }

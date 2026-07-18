@@ -29,6 +29,62 @@ enum Theme {
 
     static let cardRadius: CGFloat = 16
     static let barHeight: CGFloat = 14
+
+    /// Per-limit meter colors, same mapping as the website's limit cards.
+    static func limitColor(_ label: String, percent: Double) -> Color {
+        if percent >= 90 { return .red }
+        if percent >= 80 { return .orange }
+        switch label.lowercased() {
+        case "weekly": return blue
+        case "session": return accent
+        default: return purple    // model-scoped (Fable, …)
+        }
+    }
+
+    /// Faint green grid, like the website's grid-bg (44pt cells).
+    static let gridImage: Image = {
+        let size = NSSize(width: 44, height: 44)
+        let img = NSImage(size: size)
+        img.lockFocus()
+        NSColor(red: 0.247, green: 0.725, blue: 0.314, alpha: 0.045).setStroke()
+        let path = NSBezierPath()
+        path.lineWidth = 1
+        path.move(to: NSPoint(x: 0.5, y: 0)); path.line(to: NSPoint(x: 0.5, y: 44))
+        path.move(to: NSPoint(x: 0, y: 43.5)); path.line(to: NSPoint(x: 44, y: 43.5))
+        path.stroke()
+        img.unlockFocus()
+        img.resizingMode = .tile
+        return Image(nsImage: img)
+    }()
+}
+
+/// The website's pulsing "live" dot.
+struct PulsingDot: View {
+    var color: Color = Theme.accent
+    var size: CGFloat = 7
+    var active = true
+    @State private var dim = false
+    var body: some View {
+        Circle().fill(active ? color : Color.secondary)
+            .frame(width: size, height: size)
+            .opacity(active && dim ? 0.2 : 1)
+            .animation(active ? .easeInOut(duration: 0.8).repeatForever(autoreverses: true) : .default, value: dim)
+            .onAppear { dim = true }
+    }
+}
+
+/// The website's blinking block cursor.
+struct BlinkingCursor: View {
+    var width: CGFloat = 10
+    var height: CGFloat = 30
+    @State private var on = true
+    var body: some View {
+        Rectangle().fill(Theme.accent)
+            .frame(width: width, height: height)
+            .opacity(on ? 1 : 0)
+            .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: on)
+            .onAppear { on = false }
+    }
 }
 
 /// The brand mark — "Ring Spark": a progress ring frozen at 70% with a center dot.

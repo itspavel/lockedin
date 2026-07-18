@@ -58,6 +58,7 @@ struct ShareCard: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
         )
+        .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)
     }
 

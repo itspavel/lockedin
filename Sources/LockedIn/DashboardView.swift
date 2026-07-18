@@ -47,7 +47,14 @@ struct DashboardView: View {
             ScrollView { content.padding(24) }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(Theme.background)
+        .background(
+            ZStack {
+                Theme.background
+                Rectangle().fill(ImagePaint(image: Theme.gridImage, scale: 1))
+            }
+            .ignoresSafeArea()
+        )
+        .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)   // always dark — the console surface is the brand
         .tint(Theme.accent)
         .frame(minWidth: 860, minHeight: 600)
@@ -170,11 +177,15 @@ private struct DashboardTab: View {
     var body: some View {
         let d = tracker.today
         VStack(alignment: .leading, spacing: 22) {
-            Text("Dashboard").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --dashboard").font(.caption).foregroundStyle(Theme.accent)
+                Text("Dashboard").font(.largeTitle.weight(.bold))
+            }
 
             // Hero — your focused time; agents are a separate stat.
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(d.humanTotal.hoursCompact).font(.system(size: 52, weight: .black, design: .monospaced))
+                BlinkingCursor(width: 11, height: 34)
                 Text("focused today")
                     .foregroundStyle(.secondary)
                 if d.agentTotal > 0 {
@@ -268,7 +279,10 @@ private struct ProjectsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Projects").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --projects").font(.caption).foregroundStyle(Theme.accent)
+                Text("Projects").font(.largeTitle.weight(.bold))
+            }
             Text("Every project you've worked on — click one to see its details.")
                 .foregroundStyle(.secondary)
 
@@ -398,7 +412,10 @@ private struct AgentsTab: View {
     var body: some View {
         let mix = tracker.today.tokensByModel.sorted { $0.value.total > $1.value.total }
         VStack(alignment: .leading, spacing: 18) {
-            Text("Agents & Tokens").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --agents").font(.caption).foregroundStyle(Theme.accent)
+                Text("Agents & Tokens").font(.largeTitle.weight(.bold))
+            }
 
             HStack(spacing: 24) {
                 bigStat("\(tracker.today.tokenTotal.total.tokensCompact)", "tokens today")
@@ -439,7 +456,10 @@ private struct SettingsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            Text("Settings").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --settings").font(.caption).foregroundStyle(Theme.accent)
+                Text("Settings").font(.largeTitle.weight(.bold))
+            }
 
             section("Time tracking") {
                 Picker("Count focus when", selection: Binding(
@@ -858,7 +878,7 @@ private struct UsageSection: View {
                 }
             }
             ProgressView(value: min(limit.percent / 100, 1))
-                .tint(limit.percent >= 90 ? .red : limit.percent >= 70 ? .orange : Theme.accent)
+                .tint(Theme.limitColor(limit.label, percent: limit.percent))
             HStack {
                 Text("\(Int(limit.percent))% used").font(.caption2).foregroundStyle(.secondary)
                 if let r = limit.resetsAt {
@@ -1092,7 +1112,10 @@ private struct CalendarTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Calendar").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --calendar").font(.caption).foregroundStyle(Theme.accent)
+                Text("Calendar").font(.largeTitle.weight(.bold))
+            }
             Text("Your focus over time — each square is a day, brighter means more work. Hover for details.")
                 .foregroundStyle(.secondary)
 
@@ -1250,7 +1273,10 @@ private struct ReportsTab: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            Text("Reports").font(.largeTitle.weight(.bold))
+            VStack(alignment: .leading, spacing: 3) {
+                Text(verbatim: "$ lockedin --reports").font(.caption).foregroundStyle(Theme.accent)
+                Text("Reports").font(.largeTitle.weight(.bold))
+            }
             Text("All-time totals and a CSV export for invoicing or analysis.")
                 .foregroundStyle(.secondary)
 

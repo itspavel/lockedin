@@ -17,6 +17,7 @@ struct DesktopWidgetView: View {
         }
         .frame(width: size.width)
         .background(Theme.background.opacity(0.94))   // brand surface over the window blur
+        .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
         .contentShape(Rectangle())
@@ -183,7 +184,7 @@ struct DesktopWidgetView: View {
     /// A refined limit bar: label, a colored capsule that warns as it fills, and the %.
     private func usageBar(_ limit: UsageLimit) -> some View {
         let pct = limit.percent
-        let fill: Color = pct >= 90 ? .red : pct >= 70 ? .orange : Theme.accent
+        let fill = Theme.limitColor(limit.label, percent: pct)
         return HStack(spacing: 9) {
             Text(limit.label).font(.caption.weight(limit.active ? .bold : .semibold))
                 .foregroundStyle(limit.active ? .primary : .secondary)
@@ -269,7 +270,7 @@ struct DesktopWidgetView: View {
             .help("Open Dashboard")
             Spacer()
             if tracker.editorConnected || !tracker.activeSessions.isEmpty || tracker.humanActiveNow {
-                Circle().fill(.green).frame(width: 7, height: 7)
+                PulsingDot()
             }
             controls
         }
