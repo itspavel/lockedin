@@ -22,11 +22,13 @@ never hit a wall mid-ship.
 Built for indie hackers and solo builders who ship with Cursor and Claude Code and want
 to know where their hours actually go — including the hours the agents put in.
 
-| Popover | Desktop widget |
-|---|---|
-| ![Popover](.github/assets/popover.png) | ![Widget](.github/assets/widget.png) |
+<p align="center">
+  <img src=".github/assets/popover.png" width="330" alt="Menu-bar popover — focused time, you-vs-agent split, Claude limits">
+  &nbsp;&nbsp;
+  <img src=".github/assets/widget.png" width="334" alt="Desktop widget — today's split, tokens, limits">
+</p>
 
-![Dashboard](.github/assets/dashboard.png)
+<p align="center"><img src=".github/assets/dashboard.png" width="820" alt="Dashboard — hero split, stat cards, AI insights, daily rhythm"></p>
 
 ## Install
 

@@ -66,6 +66,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         refreshStatusItem()
 
         if CommandLine.arguments.contains("--dashboard") { dashboard.show() }
+        // Screenshot helper: pop the menu-bar popover shortly after launch.
+        if CommandLine.arguments.contains("--popover") {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in self?.togglePopover() }
+        }
         if CommandLine.arguments.contains("--test-notif") {
             DispatchQueue.main.asyncAfter(deadline: .now() + 2) { StatusMonitor.shared.sendTest() }
         }
