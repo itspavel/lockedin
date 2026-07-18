@@ -12,6 +12,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
 
     /// `onOpenSettings` opens the dashboard on the Settings tab (to connect Claude usage).
     func show(onOpenSettings: @escaping () -> Void) {
+        let wasOpen = window?.isVisible ?? false
         if window == nil {
             let view = OnboardingView(
                 onOpenSettings: { [weak self] in self?.finish(); onOpenSettings() },
@@ -31,7 +32,7 @@ final class OnboardingWindowController: NSObject, NSWindowDelegate {
             w.delegate = self
             window = w
         }
-        DockPolicy.windowOpened()
+        if !wasOpen { DockPolicy.windowOpened() }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }

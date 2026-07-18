@@ -16,6 +16,7 @@ final class DashboardWindowController: NSObject, NSWindowDelegate {
     init(tracker: Tracker) { self.tracker = tracker }
 
     func show(tab: DashTab = .dashboard) {
+        let wasOpen = window?.isVisible ?? false
         if window == nil {
             let w = NSWindow(
                 contentRect: NSRect(x: 0, y: 0, width: 1000, height: 680),
@@ -30,7 +31,7 @@ final class DashboardWindowController: NSObject, NSWindowDelegate {
             w.delegate = self
             window = w
         }
-        DockPolicy.windowOpened()
+        if !wasOpen { DockPolicy.windowOpened() }   // count transitions, not calls
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
