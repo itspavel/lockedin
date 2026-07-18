@@ -34,6 +34,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         setupMainMenu()
+        Notifier.setup()                // request notification permission + delegates
         LoginItem.reconcileAtLaunch()   // heal stale registrations (e.g. dev-build path)
         tracker.start()
 
