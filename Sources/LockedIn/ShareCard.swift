@@ -16,7 +16,10 @@ struct ShareCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("DAY \(day) — \(project.uppercased())")
+            Text(verbatim: "$ lockedin --day \(day)")
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
+                .foregroundStyle(Theme.accent)
+            Text(project.uppercased())
                 .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .tracking(2)
                 .foregroundStyle(.secondary)
@@ -29,6 +32,12 @@ struct ShareCard: View {
                 .foregroundStyle(.secondary)
 
             SplitBar(human: human, agent: agent, height: 16)
+            HStack {
+                Text(verbatim: "[you] \(Int((human / max(total, 1)) * 100))%")
+                Spacer()
+                Text(verbatim: "[agents] \(Int((agent / max(total, 1)) * 100))%")
+            }
+            .font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
 
             HStack(spacing: 10) {
                 badge("flame", "\(streak)-day streak")

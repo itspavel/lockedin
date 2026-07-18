@@ -68,6 +68,7 @@ struct OnboardingView: View {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable().frame(width: 60, height: 60)
                 VStack(alignment: .leading, spacing: 3) {
+                    Text(verbatim: "$ lockedin --welcome").font(.caption).foregroundStyle(Theme.accent)
                     Text("Welcome to LockedIn").font(.title2.weight(.bold))
                     Text("Zero-input time tracking for building with AI.")
                         .foregroundStyle(.secondary)
@@ -100,7 +101,12 @@ struct OnboardingView: View {
         }
         .padding(26)
         .frame(width: 460)
-        .background(Theme.background)
+        .background(
+            ZStack {
+                Theme.background
+                Rectangle().fill(ImagePaint(image: Theme.gridImage, scale: 1))
+            }
+        )
         .fontDesign(.monospaced)
         .environment(\.colorScheme, .dark)
         .tint(Theme.accent)
