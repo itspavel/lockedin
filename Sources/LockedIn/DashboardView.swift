@@ -90,6 +90,16 @@ struct DashboardView: View {
             }
 
             Spacer()
+
+            // Feedback — opens a prefilled GitHub issue.
+            VStack(alignment: .leading, spacing: 2) {
+                sidebarLink("ladybug", "Report a bug",
+                            "https://github.com/itspavel/lockedin/issues/new?template=bug_report.yml")
+                sidebarLink("lightbulb", "Suggest a feature",
+                            "https://github.com/itspavel/lockedin/issues/new?template=feature_request.yml")
+            }
+            .padding(.horizontal, 8)
+
             if tracker.streak > 0 {
                 Label("\(tracker.streak)-day streak · \(tracker.today.humanTotal.hoursCompact) today",
                       systemImage: "flame")
@@ -99,6 +109,24 @@ struct DashboardView: View {
         }
         .frame(width: 210)
         .background(Color.black.opacity(0.18))
+    }
+
+    private func sidebarLink(_ icon: String, _ title: String, _ url: String) -> some View {
+        Button {
+            if let u = URL(string: url) { NSWorkspace.shared.open(u) }
+        } label: {
+            HStack(spacing: 11) {
+                Image(systemName: icon).frame(width: 18)
+                Text(title)
+                Spacer()
+                Image(systemName: "arrow.up.right").font(.caption2).foregroundStyle(.tertiary)
+            }
+            .font(.callout)
+            .foregroundStyle(.secondary)
+            .padding(.horizontal, 10).padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     @ViewBuilder private var content: some View {

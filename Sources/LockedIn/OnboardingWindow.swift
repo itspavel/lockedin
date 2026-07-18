@@ -4,7 +4,7 @@ import SwiftUI
 /// First-run welcome. Shows once, explains the menu-bar model, and points to the
 /// optional editor sensor + Claude usage connection.
 @MainActor
-final class OnboardingWindowController {
+final class OnboardingWindowController: NSObject, NSWindowDelegate {
     private var window: NSWindow?
     private static let doneKey = "onboarding.shown"
 
@@ -28,10 +28,16 @@ final class OnboardingWindowController {
             w.isReleasedWhenClosed = false
             w.contentView = host
             w.center()
+            w.delegate = self
             window = w
         }
+        DockPolicy.windowOpened()
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        DockPolicy.windowClosed()
     }
 
     private func finish() {
