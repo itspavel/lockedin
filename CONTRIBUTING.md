@@ -37,8 +37,9 @@ dumps PNGs of every surface (popover / widget / dashboard / share card) — our
 
 ## The landing site
 
-`landing/` is a Next.js app (`pnpm dev`). Brand tokens live in
-`landing/src/app/globals.css`.
+The site is a Next.js app in its own repo,
+[lockedin-site](https://github.com/itspavel/lockedin-site) (`pnpm dev`). Brand
+tokens live in `src/app/globals.css` there and mirror the app's Theme.
 
 ## Bugs & ideas
 

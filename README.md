@@ -143,8 +143,8 @@ from code via [`scripts/make_icon.py`](scripts/make_icon.py).
 | `Sources/LockedIn/DesktopWidgetView.swift` | always-on desktop widget |
 | `Sources/LockedIn/DashboardView.swift` | full dashboard (Projects, Calendar, Reports, Settings) |
 
-`landing/` is the Next.js website (terminal-themed, same design tokens); its `public/appcast.json`
-feeds in-app updates. Stage 1 (the Mirror) is built; WidgetKit widget, iOS companion, and
+The website lives in its own repo, [lockedin-site](https://github.com/itspavel/lockedin-site)
+(terminal-themed, same design tokens); its `public/appcast.json` feeds in-app updates. Stage 1 (the Mirror) is built; WidgetKit widget, iOS companion, and
 sync are later stages.
 
 ## Releasing

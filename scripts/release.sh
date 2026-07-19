@@ -58,5 +58,5 @@ shasum -a 256 "$DMG"
 
 echo
 echo "Done: $DMG is notarized + stapled."
-echo "Ship it: cp to landing/public/download/LockedIn.dmg, bump landing/public/appcast.json"
+echo "Ship it: cp to ../lockedin-site/public/download/LockedIn.dmg, bump its appcast.json"
 echo "(version + notes), then deploy the site. In-app updaters will pick it up."

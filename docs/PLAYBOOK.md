@@ -9,6 +9,9 @@ order that worked, with the mistakes we paid for marked ⚠️.
 - **One monorepo**: Swift app at the root, `landing/` for the Next.js site,
   `scripts/` for every build/release action, `docs/` for process, `.github/`
   for CI + templates + README assets.
+  *(Amended 2026-07: the site now lives in its own repo, `<app>-site` — app
+  users cloning the repo don't need the website. Both LockedIn and SplitScreen
+  follow the split layout; ship docs point at `../<app>-site`.)*
 - **SwiftPM only, no Xcode project.** `swift build` is the compile check;
   `scripts/bundle.sh` assembles the .app (Info.plist, icon, version); everything
   is scriptable and CI-able on a plain runner.

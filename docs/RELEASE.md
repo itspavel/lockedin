@@ -25,15 +25,15 @@ apps like this ([Signing Mac Software with Developer ID](https://developer.apple
 ```sh
 # 1. bump the version + release notes
 echo "0.2" > VERSION
-$EDITOR landing/public/appcast.json     # version, date, notes[] — feeds in-app updates
-$EDITOR landing/src/app/changelog/page.tsx
+$EDITOR ../lockedin-site/public/appcast.json     # version, date, notes[] — feeds in-app updates
+$EDITOR ../lockedin-site/src/app/changelog/page.tsx
 
 # 2. sign, notarize, staple, verify (all in one)
 SIGN_IDENTITY="Developer ID Application: Your Name (TEAMID)" ./scripts/release.sh
 
 # 3. publish
-cp build/LockedIn-0.2.dmg landing/public/download/LockedIn.dmg
-cd landing && npx vercel deploy --prod --yes
+cp build/LockedIn-0.2.dmg ../lockedin-site/public/download/LockedIn.dmg
+cd ../lockedin-site && npx vercel deploy --prod --yes   # commit + push that repo too
 ```
 
 Users on older versions see the in-app **“Update available”** banner + notification

@@ -1,6 +1,0 @@
-services:
-  landing:
-    build: .
-    ports:
-      - "8080:3000"   # host 8080 -> container 3000 (change the left number to any free port)
-    restart: unless-stopped
