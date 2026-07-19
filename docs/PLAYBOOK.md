@@ -49,12 +49,18 @@ order that worked, with the mistakes we paid for marked ⚠️.
   server instead: look your own `windowNumber` up in
   `CGWindowListCopyWindowInfo([.optionOnScreenOnly])`. Treat "the whole menu bar
   is absent" (full-screen, lock screen) as *no signal*, not as failure.
-- **A menu-bar label must be able to shrink.** Ours grew through the day
-  ("45m · 18%" → "4h 12m · 92%") until it outgrew the free space and macOS just
-  hid it. Close a loop on observed visibility — not drawn → drop a component and
-  remove/recreate the item (the only way to force re-layout); drawn → occasionally
-  try to grow back. Don't trust your own width arithmetic: ours computed that the
-  label "fit" while the window server was refusing to draw it.
+- **A menu-bar label must be able to shrink — by tightening before deleting.**
+  Ours grew through the day ("45m · 18%" → "4h 12m · 92%") until it outgrew the
+  free space and macOS just hid it. Close a loop on observed visibility: not drawn
+  → step down the label and remove/recreate the item (the only way to force
+  re-layout). Order the steps so *punctuation* goes before *information* —
+  "4h 12m · 92%" (118pt) → "4h12m 92%" (107pt) saved the percentage that a naive
+  ladder threw away. Don't trust your own width arithmetic over the window server:
+  ours computed the label "fit" while macOS was refusing to draw it.
+- ⚠️ **Never restore state on a plain timer.** Retrying the full label every 5
+  minutes meant the item vanished for a few seconds every 5 minutes. Trigger
+  recovery on *evidence* that the constraint changed — the neighbouring items
+  moved, or the label itself got shorter.
 - ⚠️ **Verify against the symptom, not the code.** Two fixes here compiled, read
   correctly, and left the item just as invisible. What settled it was dumping our
   own window's bounds (`X=951 W=97` versus a usable region starting at `X=956` —
