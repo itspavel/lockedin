@@ -99,25 +99,86 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// in the on-screen list). Returns nil while the entire menu bar is hidden
     /// (full-screen app, lock screen, Space change), where the question is meaningless
     /// and acting on it caused false rescues.
-    private func statusItemOnScreen() -> Bool? {
+    private func statusItemOnScreen() -> (onScreen: Bool, neighbourEdge: CGFloat)? {
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
         let ours = statusItem.button?.window?.windowNumber
         var barVisible = false
         var itemVisible = false
+        var leftmostForeign = CGFloat.greatestFiniteMagnitude
         for w in list {
             guard let b = w["kCGWindowBounds"] as? [String: Any],
                   let y = b["Y"] as? Double, y < 2,
-                  let h = b["Height"] as? Double, h < 45
+                  let h = b["Height"] as? Double, h < 45,
+                  let x = b["X"] as? Double
             else { continue }
             if let n = w["kCGWindowNumber"] as? Int, n == ours {
                 itemVisible = true
                 barVisible = true
-            } else if let owner = w["kCGWindowOwnerName"] as? String,
-                      owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer" {
+                continue
+            }
+            if let owner = w["kCGWindowOwnerName"] as? String,
+               owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer" {
                 barVisible = true
             }
+            leftmostForeign = min(leftmostForeign, CGFloat(x))
         }
-        return barVisible ? itemVisible : nil
+        guard barVisible else { return nil }
+        return (itemVisible, leftmostForeign)
+    }
+
+    /// The label ladder. Your focused time today plus the live session %; when the bar
+    /// runs out of room we tighten the spelling before giving anything up, because the
+    /// percentage is worth more than the punctuation between them.
+    ///   0  " 4h 12m · 92%"    1  " 4h12m 92%"    2  " 4h 12m"    3  icon only
+    private func menuBarLabel(level: Int) -> String {
+        let time = tracker.today.humanTotal.hoursCompact
+        let pct = UsageManager.shared.connected ? UsageManager.shared.session?.percent : nil
+        switch level {
+        case 0:
+            guard let p = pct else { return " " + time }
+            return " \(time) · \(Int(p))%"
+        case 1:
+            guard let p = pct else { return " " + time }
+            return " \(time.replacingOccurrences(of: " ", with: "")) \(Int(p))%"
+        case 2:
+            return " " + time
+        default:
+            return ""
+        }
+    }
+
+    /// The richest label the user actually asked for — the ceiling fitLevel trims below.
+    private var configuredLevel: Int {
+        switch tracker.menuBarStyle {
+        case .full: return 0
+        case .timeOnly: return 2
+        case .iconOnly: return 3
+        }
+    }
+
+    private func preferredLabelWidth() -> CGFloat {
+        guard let button = statusItem.button else { return 0 }
+        let font = button.font ?? NSFont.menuBarFont(ofSize: 0)
+        return (menuBarLabel(level: configuredLevel) as NSString)
+            .size(withAttributes: [.font: font]).width
+    }
+
+    /// Room our item can occupy: everything from the start of the usable region up to
+    /// the neighbour it butts against. macOS lays items out right-to-left, so this is
+    /// the number that decides whether we get drawn at all.
+    private func availableWidth(neighbourEdge: CGFloat) -> CGFloat {
+        let regionStart = NSScreen.main?.auxiliaryTopRightArea?.minX ?? 0
+        return neighbourEdge - regionStart
+    }
+
+    /// Growing the label back is only worth a try when something actually changed:
+    /// the bar's contents shifted (an app quit, a Space switched), or the label itself
+    /// got shorter than the one that didn't fit (a new day, a smaller percentage).
+    /// A plain timer here makes the item vanish for a few seconds on every retry.
+    private func worthRetryingFullLabel(neighbourEdge: CGFloat) -> Bool {
+        if let room = failedAvailableWidth, availableWidth(neighbourEdge: neighbourEdge) > room + 4 { return true }
+        if let w = failedLabelWidth, preferredLabelWidth() < w - 4 { return true }
+        return false
     }
 
     private var notchNotified = false
@@ -127,8 +188,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// 1 = drop the usage %, 2 = icon only.
     private var fitLevel = 0
     private var lastFitCheck = Date.distantPast
-    private var lastGrowAttempt = Date.distantPast
     private var lastFitCrumb = ""
+    /// What the bar looked like when the label last failed to fit.
+    private var failedLabelWidth: CGFloat?
+    private var failedAvailableWidth: CGFloat?
 
     private func makeStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -171,29 +234,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         guard Date().timeIntervalSince(lastFitCheck) >= 8 else { return }
         lastFitCheck = Date()
 
-        guard let onScreen = statusItemOnScreen() else { return }   // bar hidden — no signal
-        let crumb = "level=\(fitLevel) onScreen=\(onScreen) title=\(statusItem.button?.title ?? "-")"
+        guard let state = statusItemOnScreen() else { return }   // bar hidden — no signal
+        let crumb = "level=\(fitLevel) onScreen=\(state.onScreen) title=\(statusItem.button?.title ?? "-")"
         if crumb != lastFitCrumb {
             lastFitCrumb = crumb
             UserDefaults.standard.set(crumb, forKey: "menubar.debug.fit")
         }
 
-        if onScreen {
+        if state.onScreen {
             notchHiddenStreak = 0
             notchRescueAttempts = 0
-            // Room may have opened up (an app quit, a Space changed) — retry richness.
-            if fitLevel > 0, Date().timeIntervalSince(lastGrowAttempt) >= 300 {
-                lastGrowAttempt = Date()
+            if fitLevel > 0, worthRetryingFullLabel(neighbourEdge: state.neighbourEdge) {
                 fitLevel -= 1
+                failedLabelWidth = nil
+                failedAvailableWidth = nil
                 refreshStatusItem()
             }
             return
         }
 
         // Shrink first: a narrower item is the only thing that actually wins back space.
-        if fitLevel < 2 {
+        if fitLevel < 3 {
             fitLevel += 1
-            lastGrowAttempt = Date()      // hold off growing again for a while
+            failedLabelWidth = preferredLabelWidth()
+            failedAvailableWidth = availableWidth(neighbourEdge: state.neighbourEdge)
             refreshStatusItem()
             // Re-place it at the narrower width; macOS won't re-lay-out a hidden item.
             NSStatusBar.system.removeStatusItem(statusItem)
@@ -243,29 +307,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let active = tracker.humanActiveNow || !tracker.activeSessions.isEmpty
             button.image = Self.ringImage(progress: pct / 100, dimmed: !active)
         }
-        // Your focused time today (midnight–midnight), plus the session usage % when
-        // connected. Narrower styles exist because macOS hides menu-bar items that fall
-        // under the notch on a crowded bar.
-        // The configured style is the ceiling; fitLevel trims below it when the bar is full.
-        let configured: Int = {
-            switch tracker.menuBarStyle {
-            case .full: return 0
-            case .timeOnly: return 1
-            case .iconOnly: return 2
-            }
-        }()
-        switch max(configured, fitLevel) {
-        case 0:
-            var title = " " + tracker.today.humanTotal.hoursCompact
-            if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
-                title += " · \(Int(p))%"
-            }
-            button.title = title
-        case 1:
-            button.title = " " + tracker.today.humanTotal.hoursCompact
-        default:
-            button.title = ""
-        }
+        button.title = menuBarLabel(level: max(configuredLevel, fitLevel))
     }
 
     private func symbol(_ name: String) -> NSImage? {
