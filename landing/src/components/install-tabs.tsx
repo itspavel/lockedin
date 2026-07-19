@@ -3,13 +3,12 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 
 const CMDS: Record<string, string> = {
-  brew: "brew install lockedin",
-  curl: "curl -fsSL lockedin.app/install | sh",
-  npm: "npx lockedin-cli init",
+  curl: "curl -fsSL https://landing-zeta-coral.vercel.app/install | sh",
+  brew: "brew install --cask --no-quarantine itspavel/tap/lockedin",
 };
 
 export function InstallTabs({ className }: { className?: string }) {
-  const [tab, setTab] = useState<keyof typeof CMDS>("brew");
+  const [tab, setTab] = useState<keyof typeof CMDS>("curl");
   const [copied, setCopied] = useState(false);
 
   const copy = async () => {

@@ -15,8 +15,10 @@ export default function DocsPage() {
 
       <div className="mt-10 flex flex-col gap-9 text-[14px] leading-[1.8] text-[var(--color-dim)]">
         <Doc t="Install">
-          Grab it from the <Link href="/download" className="text-[var(--color-green)]">download page</Link>. It&apos;s a menu-bar
-          app — no Dock icon. On first launch, right-click → Open (beta signing).
+          Grab it from the <Link href="/download" className="text-[var(--color-green)]">download page</Link> — the one-line
+          install script skips the Gatekeeper prompt entirely. Installing from the .dmg instead? Beta builds are unsigned:
+          on macOS 15 open the app once, then System Settings → Privacy &amp; Security → Open Anyway (macOS 13–14:
+          right-click → Open). It&apos;s a menu-bar app — no Dock icon.
         </Doc>
         <Doc t="How tracking works">
           Every few seconds LockedIn checks which app is frontmost and whether you&apos;ve given input, and watches Claude

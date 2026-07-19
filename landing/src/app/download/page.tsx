@@ -10,8 +10,8 @@ export const metadata: Metadata = {
 };
 
 const STEPS = [
-  ["01", "Run the install command", "Or download the .dmg and drag LockedIn to Applications."],
-  ["02", "First launch", "It's beta-signed, so on first open: right-click the app → Open → Open. macOS remembers after that."],
+  ["01", "Run the install command", "The script pulls the latest release into /Applications with no Gatekeeper prompt — curl downloads carry no quarantine flag. Prefer clicking? Grab the .dmg below."],
+  ["02", "First launch (DMG only)", "Beta builds aren't Developer ID signed yet. macOS 15: open the app once, then System Settings → Privacy & Security → Open Anyway. macOS 13–14: right-click → Open. One time only."],
   ["03", "Look up at the menu bar", "LockedIn lives there — no Dock icon. It starts tracking the moment you open your editor."],
 ];
 
@@ -27,7 +27,7 @@ export default function DownloadPage() {
       <div className="mt-8"><InstallTabs /></div>
 
       <div><DownloadButton /></div>
-      <p className="mt-3 text-xs text-[var(--color-dimmer)]"># apple silicon &amp; intel · macOS 14+ · no account · right-click → Open on first launch</p>
+      <p className="mt-3 text-xs text-[var(--color-dimmer)]"># apple silicon &amp; intel · macOS 14+ · no account · unsigned beta — the install script skips the Gatekeeper prompt</p>
 
       <div className="mt-14 grid gap-4 sm:grid-cols-3">
         {STEPS.map(([n, t, d]) => (

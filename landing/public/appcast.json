@@ -1,13 +1,10 @@
 {
-  "version": "0.2",
-  "date": "2026-07-18",
+  "version": "0.2.1",
+  "date": "2026-07-19",
   "url": "https://landing-zeta-coral.vercel.app/download/LockedIn.dmg",
   "minSystem": "14.0",
   "notes": [
-    "New Console look — the app now matches the website: terminal surfaces, green accent, monospaced numerals, new icon.",
-    "Limit alerts: get notified at 80% and 95% of any Claude limit (Session / Weekly / Fable).",
-    "Notch fixes: the menu-bar item rescues itself from under the notch, and the widget + Dashboard stay reachable even when the bar is full.",
-    "Right-click menus on the menu-bar item and the desktop widget.",
-    "Report a bug / suggest a feature straight from the Dashboard."
+    "Menu-bar item no longer vanishes after full-screen use or screen lock.",
+    "One-line install script and a Homebrew tap — both skip the Gatekeeper prompt."
   ]
 }

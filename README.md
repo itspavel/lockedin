@@ -9,7 +9,7 @@ See the real you-vs-agent split for every project — no timers, all local.</p>
   <a href="https://landing-zeta-coral.vercel.app"><img src="https://img.shields.io/badge/website-lockedin-3FB950" alt="Website"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-blue" alt="macOS 14+">
   <img src="https://img.shields.io/badge/Swift-5.9-orange" alt="Swift">
-  <a href="https://github.com/itspavel/lockedin/releases"><img src="https://img.shields.io/badge/release-v0.2-3FB950" alt="Latest release"></a>
+  <a href="https://github.com/itspavel/lockedin/releases"><img src="https://img.shields.io/badge/release-v0.2.1-3FB950" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT"></a>
   <a href=".github/workflows/ci.yml"><img src="https://img.shields.io/badge/CI-GitHub%20Actions-informational" alt="CI"></a>
 </p>
@@ -35,10 +35,25 @@ to know where their hours actually go — including the hours the agents put in.
 
 ## Install
 
-**[Download the DMG](https://landing-zeta-coral.vercel.app/download)** (free beta,
-macOS 14+, Apple Silicon & Intel), drag to Applications, and — until builds are
-notarized — right-click → Open on first launch. DMGs are also attached to
-[GitHub Releases](https://github.com/itspavel/lockedin/releases).
+One line — no Gatekeeper prompt (macOS 14+, Apple Silicon & Intel, free beta):
+
+```sh
+curl -fsSL https://landing-zeta-coral.vercel.app/install | sh
+```
+
+Homebrew:
+
+```sh
+brew install --cask --no-quarantine itspavel/tap/lockedin
+```
+
+Or **[download the DMG](https://landing-zeta-coral.vercel.app/download)** (also on
+[GitHub Releases](https://github.com/itspavel/lockedin/releases)) and drag to
+Applications. Beta builds are unsigned until the project justifies the $99/yr
+Developer ID, so the DMG route needs a one-time unblock: on macOS 15 open the app
+once, then **System Settings → Privacy & Security → Open Anyway**; on macOS 13–14
+right-click → Open. Or clear the flag:
+`xattr -dr com.apple.quarantine /Applications/LockedIn.app`.
 
 Or build from source in ~30 seconds (see below). Updates surface in-app: the menu-bar
 popover shows an "Update available" banner with release notes.

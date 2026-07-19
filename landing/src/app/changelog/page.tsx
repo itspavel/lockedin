@@ -8,6 +8,13 @@ export const metadata: Metadata = {
 
 const RELEASES = [
   {
+    v: "0.2.1", date: "2026-07-19", tag: "beta",
+    notes: [
+      "Menu-bar item no longer vanishes after full-screen use or screen lock (the notch-rescue logic misfired while the menu bar itself was hidden).",
+      "One-line install script (curl | sh) and a Homebrew tap — both skip the Gatekeeper prompt.",
+    ],
+  },
+  {
     v: "0.2", date: "2026-07-18", tag: "beta",
     notes: [
       "New Console look — the app now matches the website: terminal surfaces, green accent, monospaced numerals, new icon.",
