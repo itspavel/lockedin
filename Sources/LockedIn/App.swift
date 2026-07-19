@@ -92,42 +92,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    /// True when the whole menu bar is on screen (Control Centre always has an item).
-    /// Full-screen apps, the lock screen, and Space transitions hide the entire bar —
-    /// in those states our item having no window means nothing.
-    private func menuBarOnScreen() -> Bool {
+    /// The window server's own answer to "is our item actually drawn?".
+    ///
+    /// `NSWindow.isVisible` is not that answer — it stays true even when the bar has no
+    /// room and macOS quietly declines to display the item (its window then simply isn't
+    /// in the on-screen list). Returns nil while the entire menu bar is hidden
+    /// (full-screen app, lock screen, Space change), where the question is meaningless
+    /// and acting on it caused false rescues.
+    private func statusItemOnScreen() -> Bool? {
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
+        let ours = statusItem.button?.window?.windowNumber
+        var barVisible = false
+        var itemVisible = false
         for w in list {
-            if let owner = w["kCGWindowOwnerName"] as? String,
-               owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer",
-               let b = w["kCGWindowBounds"] as? [String: Any],
-               let y = b["Y"] as? Double, y < 2,
-               let h = b["Height"] as? Double, h < 45 {
-                return true
+            guard let b = w["kCGWindowBounds"] as? [String: Any],
+                  let y = b["Y"] as? Double, y < 2,
+                  let h = b["Height"] as? Double, h < 45
+            else { continue }
+            if let n = w["kCGWindowNumber"] as? Int, n == ours {
+                itemVisible = true
+                barVisible = true
+            } else if let owner = w["kCGWindowOwnerName"] as? String,
+                      owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer" {
+                barVisible = true
             }
         }
-        return false
-    }
-
-    /// True when the status item landed under the notch. A missing item window only
-    /// counts as hidden while the menu bar itself is visible — otherwise full-screen
-    /// apps would trigger false rescues that yank a healthy item into the overflow.
-    private func statusItemHiddenByNotch() -> Bool {
-        guard let screen = NSScreen.main, screen.safeAreaInsets.top > 0 else { return false }
-        guard let win = statusItem.button?.window, win.isVisible else {
-            return menuBarOnScreen()
-        }
-        let midX = win.frame.midX
-        let inArea: (NSRect?) -> Bool = { area in
-            guard let a = area else { return false }
-            return midX >= a.minX && midX <= a.maxX
-        }
-        return !(inArea(screen.auxiliaryTopLeftArea) || inArea(screen.auxiliaryTopRightArea))
+        return barVisible ? itemVisible : nil
     }
 
     private var notchNotified = false
     private var notchHiddenStreak = 0
     private var notchRescueAttempts = 0
+    /// How much the label has been trimmed to stay on the bar: 0 = as configured,
+    /// 1 = drop the usage %, 2 = icon only.
+    private var fitLevel = 0
+    private var lastFitCheck = Date.distantPast
+    private var lastGrowAttempt = Date.distantPast
+    private var lastFitCrumb = ""
 
     private func makeStatusItem() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
@@ -158,51 +159,72 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func menuToggleWidget() { widget.toggle() }
     @objc private func menuOpenSettings() { dashboard.show(tab: .settings) }
 
-    /// Notch rescue: removing and recreating the item re-inserts it at the front of the
-    /// visible section (beside the notch) — the only reposition mechanism macOS allows.
-    /// Debounced (two consecutive hidden checks, so launch races don't misfire) and
-    /// retried up to 3 times; after that, icon-only.
-    private func rescueFromNotch() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-            guard let self else { return }
-            guard self.statusItemHiddenByNotch() else {
-                self.notchHiddenStreak = 0
-                self.notchRescueAttempts = 0   // healthy again — re-arm future rescues
-                return
-            }
-            self.notchHiddenStreak += 1
-            guard self.notchHiddenStreak >= 2 else { return }
+    /// Keeps the item on a crowded bar by shrinking what it says rather than vanishing.
+    ///
+    /// The label grows through the day ("45m" → "4h 12m · 92%"), and macOS silently hides
+    /// menu-bar items that no longer fit — so this closes a loop on *observed* visibility:
+    /// hidden → drop a component (usage %, then the time); genuinely out of room even as a
+    /// bare icon → the remove/recreate notch rescue; visible again → occasionally try to
+    /// grow back, in case the bar freed up. Checks are throttled: the window-list scan is
+    /// far too expensive to run on every tracker tick.
+    private func checkStatusItemFit() {
+        guard Date().timeIntervalSince(lastFitCheck) >= 8 else { return }
+        lastFitCheck = Date()
 
-            guard self.notchRescueAttempts < 3 else {
-                self.statusItem.button?.title = ""
-                if !self.notchNotified {
-                    self.notchNotified = true
-                    if !self.widget.isVisible { self.widget.show() }
-                    Notifier.send("Your menu bar is full — LockedIn can't fit",
-                                  "Stats stay on the desktop widget (tap it for the Dashboard), or launch LockedIn again from Spotlight. Freeing menu-bar space brings the item back.")
-                }
-                return
-            }
-            self.notchRescueAttempts += 1
-            self.notchHiddenStreak = 0
-
-            NSStatusBar.system.removeStatusItem(self.statusItem)
-            self.makeStatusItem()
-            self.refreshStatusItem()
-
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if !self.statusItemHiddenByNotch(), !self.notchNotified {
-                    self.notchNotified = true
-                    Notifier.send("LockedIn moved out from under the notch",
-                                  "Your menu bar was crowded, so it relocated next to the notch. ⌘-drag to move it anywhere.")
-                }
-            }
+        guard let onScreen = statusItemOnScreen() else { return }   // bar hidden — no signal
+        let crumb = "level=\(fitLevel) onScreen=\(onScreen) title=\(statusItem.button?.title ?? "-")"
+        if crumb != lastFitCrumb {
+            lastFitCrumb = crumb
+            UserDefaults.standard.set(crumb, forKey: "menubar.debug.fit")
         }
+
+        if onScreen {
+            notchHiddenStreak = 0
+            notchRescueAttempts = 0
+            // Room may have opened up (an app quit, a Space changed) — retry richness.
+            if fitLevel > 0, Date().timeIntervalSince(lastGrowAttempt) >= 300 {
+                lastGrowAttempt = Date()
+                fitLevel -= 1
+                refreshStatusItem()
+            }
+            return
+        }
+
+        // Shrink first: a narrower item is the only thing that actually wins back space.
+        if fitLevel < 2 {
+            fitLevel += 1
+            lastGrowAttempt = Date()      // hold off growing again for a while
+            refreshStatusItem()
+            // Re-place it at the narrower width; macOS won't re-lay-out a hidden item.
+            NSStatusBar.system.removeStatusItem(statusItem)
+            makeStatusItem()
+            refreshStatusItem()
+            return
+        }
+
+        notchHiddenStreak += 1
+        guard notchHiddenStreak >= 2 else { return }
+
+        guard notchRescueAttempts < 3 else {
+            if !notchNotified {
+                notchNotified = true
+                if !widget.isVisible { widget.show() }
+                Notifier.send("Your menu bar is full — LockedIn can't fit",
+                              "Stats stay on the desktop widget (tap it for the Dashboard), or launch LockedIn again from Spotlight. Freeing menu-bar space brings the item back.")
+            }
+            return
+        }
+        notchRescueAttempts += 1
+        notchHiddenStreak = 0
+
+        NSStatusBar.system.removeStatusItem(statusItem)
+        makeStatusItem()
+        refreshStatusItem()
     }
 
     private func refreshStatusItem() {
         guard let button = statusItem.button else { return }
-        defer { rescueFromNotch() }
+        defer { checkStatusItemFit() }
 
         if tracker.lockActive {
             button.image = symbol(tracker.lockPaused ? "pause.fill" : "lock.fill")
@@ -224,17 +246,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Your focused time today (midnight–midnight), plus the session usage % when
         // connected. Narrower styles exist because macOS hides menu-bar items that fall
         // under the notch on a crowded bar.
-        switch tracker.menuBarStyle {
-        case .iconOnly:
-            button.title = ""
-        case .timeOnly:
-            button.title = " " + tracker.today.humanTotal.hoursCompact
-        case .full:
+        // The configured style is the ceiling; fitLevel trims below it when the bar is full.
+        let configured: Int = {
+            switch tracker.menuBarStyle {
+            case .full: return 0
+            case .timeOnly: return 1
+            case .iconOnly: return 2
+            }
+        }()
+        switch max(configured, fitLevel) {
+        case 0:
             var title = " " + tracker.today.humanTotal.hoursCompact
             if UsageManager.shared.connected, let p = UsageManager.shared.session?.percent {
                 title += " · \(Int(p))%"
             }
             button.title = title
+        case 1:
+            button.title = " " + tracker.today.humanTotal.hoursCompact
+        default:
+            button.title = ""
         }
     }
 

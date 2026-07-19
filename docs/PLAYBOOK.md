@@ -43,6 +43,23 @@ order that worked, with the mistakes we paid for marked ⚠️.
   hide the whole menu bar) and *caused* the disappearance it was fixing. Before
   any automatic recovery action, prove the bad state, not just the absence of a
   good signal — and trust user reports over flaky system APIs.
+- ⚠️ **`NSWindow.isVisible` is not "is it on screen".** When the menu bar has no
+  room, macOS silently stops drawing your status item while AppKit keeps
+  reporting the window visible — so self-healing code never fires. Ask the window
+  server instead: look your own `windowNumber` up in
+  `CGWindowListCopyWindowInfo([.optionOnScreenOnly])`. Treat "the whole menu bar
+  is absent" (full-screen, lock screen) as *no signal*, not as failure.
+- **A menu-bar label must be able to shrink.** Ours grew through the day
+  ("45m · 18%" → "4h 12m · 92%") until it outgrew the free space and macOS just
+  hid it. Close a loop on observed visibility — not drawn → drop a component and
+  remove/recreate the item (the only way to force re-layout); drawn → occasionally
+  try to grow back. Don't trust your own width arithmetic: ours computed that the
+  label "fit" while the window server was refusing to draw it.
+- ⚠️ **Verify against the symptom, not the code.** Two fixes here compiled, read
+  correctly, and left the item just as invisible. What settled it was dumping our
+  own window's bounds (`X=951 W=97` versus a usable region starting at `X=956` —
+  a 5pt overhang) and A/B-ing CPU against the previously shipped build to prove
+  the fix introduced no regression.
 - ⚠️ **Profile the tick loop early.** Re-reading growing log files every 5s cost
   50–99% CPU. Incremental byte-offset reads took it to ~0%. Measure CPU + RSS
   before anyone else does.
