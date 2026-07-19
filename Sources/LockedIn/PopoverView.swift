@@ -184,19 +184,25 @@ private struct UpdateBanner: View {
     var body: some View {
         if let rel = updater.available {
             Button { updater.openDownload() } label: {
-                HStack(spacing: 9) {
+                HStack(alignment: .top, spacing: 9) {
                     Image(systemName: "arrow.down.circle.fill")
-                    VStack(alignment: .leading, spacing: 1) {
+                        .padding(.top, 1)
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("Update available · v\(rel.version)").font(.caption.weight(.bold))
                         if let n = rel.notes.first {
-                            Text(n).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                            // Release notes are sentences, not labels — let them wrap.
+                            Text(n).font(.caption2).foregroundStyle(.secondary)
+                                .lineLimit(3)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .multilineTextAlignment(.leading)
                         }
                     }
-                    Spacer(minLength: 6)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     Text("Update").font(.caption.weight(.bold))
                         .padding(.horizontal, 9).padding(.vertical, 4)
                         .background(Capsule().fill(Theme.accent))
                         .foregroundStyle(Theme.accentText)
+                        .fixedSize()
                 }
                 .padding(.horizontal, 11).padding(.vertical, 9)
                 .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.accent.opacity(0.12)))

@@ -39,6 +39,30 @@ cd ../lockedin-site && npx vercel deploy --prod --yes   # commit + push that rep
 Users on older versions see the in-app **“Update available”** banner + notification
 (the app polls `appcast.json` every few hours) with your release notes.
 
+**Write `notes[0]` as a one-line headline** — the popover banner shows only the first
+note (wrapped to three lines); Settings → Updates lists them all. Long first notes get
+cut off mid-sentence in the banner.
+
+## Testing the update banner (no release needed)
+
+`appcast-test.json` on the site advertises version `99.0`, so any build sees an update.
+
+```sh
+defaults write com.lockedin.app update.feedURL \
+  "https://landing-zeta-coral.vercel.app/appcast-test.json"
+defaults delete com.lockedin.app update.notifiedVersion   # so the notification fires again
+killall LockedIn; open /Applications/LockedIn.app         # it checks on launch
+```
+
+Click the menu-bar icon for the banner; Settings → Updates shows the full note list and
+a “Check for updates” button. The download link points at the current real DMG, so
+clicking *Update* is harmless. Put it back afterwards:
+
+```sh
+defaults delete com.lockedin.app update.feedURL
+killall LockedIn; open /Applications/LockedIn.app
+```
+
 ## What the pipeline enforces (and why Apple requires it)
 
 | Step | Why |
