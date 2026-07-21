@@ -57,6 +57,14 @@ order that worked, with the mistakes we paid for marked ⚠️.
   "4h 12m · 92%" (118pt) → "4h12m 92%" (107pt) saved the percentage that a naive
   ladder threw away. Don't trust your own width arithmetic over the window server:
   ours computed the label "fit" while macOS was refusing to draw it.
+- ⚠️ **Screen geometry: `NSScreen.main` is not "the built-in display", and window lists
+  span every display.** Our free-space measure took a `min` over all menu-bar windows,
+  so the app menus *left* of the notch (x≈60) and items on a second monitor won it —
+  producing a negative width that silently disabled growing the label back, so a shrunk
+  label stayed shrunk until relaunch. Pin such logic to the screen you actually mean
+  (`NSScreen.screens.first { $0.safeAreaInsets.top > 0 }`), clip the window scan to that
+  screen's x-range, and identify your own windows by **PID** — a status item gets one
+  window per display, so the single `windowNumber` AppKit hands you may be the wrong one.
 - ⚠️ **Never restore state on a plain timer.** Retrying the full label every 5
   minutes meant the item vanished for a few seconds every 5 minutes. Trigger
   recovery on *evidence* that the constraint changed — the neighbouring items

@@ -72,6 +72,12 @@ final class Tracker: ObservableObject {
         didSet { UserDefaults.standard.set(menuBarStyle.rawValue, forKey: "menubar.style") }
     }
 
+    /// On a bar too full for icon + time + usage %, which one to sacrifice.
+    /// Off (default) keeps the ring; on keeps the number.
+    @Published var preferPercentOverIcon: Bool = UserDefaults.standard.bool(forKey: "menubar.preferPercent") {
+        didSet { UserDefaults.standard.set(preferPercentOverIcon, forKey: "menubar.preferPercent") }
+    }
+
     /// Input older than this (seconds) counts as idle. Default 120.
     @Published var idleCutoff: TimeInterval =
         (UserDefaults.standard.object(forKey: "track.idleCutoff") as? Double) ?? 120 {

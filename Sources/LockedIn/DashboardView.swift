@@ -494,7 +494,11 @@ private struct SettingsTab: View {
                     get: { tracker.menuBarStyle }, set: { tracker.menuBarStyle = $0 })) {
                     ForEach(MenuBarStyle.allCases) { Text($0.label).tag($0) }
                 }.pickerStyle(.segmented)
-                Text("On MacBooks with a notch, macOS hides menu-bar items that fall under it when the bar is crowded — no app can reposition its own item (a known macOS limitation; see Ice/Bartender). LockedIn auto-shrinks to icon-only when it detects it's hidden. Other fixes: ⌘-drag the item further left, use a menu-bar manager like Ice, or tighten macOS's item spacing:")
+                Toggle("Keep the usage % instead of the icon when the bar is full", isOn: Binding(
+                    get: { tracker.preferPercentOverIcon },
+                    set: { tracker.preferPercentOverIcon = $0 }))
+                    .font(.callout)
+                Text("On MacBooks with a notch, macOS silently stops drawing menu-bar items that don't fit beside it, and no app can reposition its own item (a known macOS limitation; see Ice/Bartender). LockedIn watches whether it's actually being drawn and tightens its label until it fits — \"4h 12m · 92%\" → \"4h12m 92%\" → time only — restoring the full label once there's room. If even the tightened label won't fit, the switch above decides what goes: the ring costs about as much width as the percentage. Other fixes: ⌘-drag the item further left, use a menu-bar manager like Ice, or tighten macOS's item spacing:")
                     .font(.caption).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 8) {

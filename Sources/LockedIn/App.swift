@@ -99,75 +99,118 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// in the on-screen list). Returns nil while the entire menu bar is hidden
     /// (full-screen app, lock screen, Space change), where the question is meaningless
     /// and acting on it caused false rescues.
+    /// Asks the window server whether our item is actually being drawn, and how much room
+    /// the right-of-notch region gives it.
+    ///
+    /// Both halves are easy to get wrong. Menu-bar windows exist for *every* display and for
+    /// the app menus left of the notch, so the neighbour scan has to be confined to this
+    /// screen and to x >= the region start — otherwise the left-hand app menus (x≈60) win the
+    /// `min` and the room comes out negative, which silently disables growing back. And our
+    /// own item gets one window per display, so identify it by PID rather than by the single
+    /// `windowNumber` AppKit hands us.
+    /// The display whose geometry this logic is about: the notched built-in one. `NSScreen.main`
+    /// follows keyboard focus, so on a second monitor it measures the wrong bar entirely.
+    private var barScreen: NSScreen? {
+        NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main
+    }
+
     private func statusItemOnScreen() -> (onScreen: Bool, neighbourEdge: CGFloat)? {
+        guard let screen = barScreen else { return nil }
+        let regionStart = screen.auxiliaryTopRightArea?.minX ?? screen.frame.minX
+        let screenRight = screen.frame.maxX
+        let screenLeft = screen.frame.minX
         let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly], kCGNullWindowID) as? [[String: Any]] ?? []
-        let ours = statusItem.button?.window?.windowNumber
+        let ourPID = Int(ProcessInfo.processInfo.processIdentifier)
+
         var barVisible = false
         var itemVisible = false
+        var ourRight: CGFloat?
         var leftmostForeign = CGFloat.greatestFiniteMagnitude
+
         for w in list {
             guard let b = w["kCGWindowBounds"] as? [String: Any],
                   let y = b["Y"] as? Double, y < 2,
                   let h = b["Height"] as? Double, h < 45,
-                  let x = b["X"] as? Double
+                  let x = b["X"] as? Double, let width = b["Width"] as? Double,
+                  x >= screenLeft, x < screenRight   // the notched display only
             else { continue }
-            if let n = w["kCGWindowNumber"] as? Int, n == ours {
+
+            if let pid = w["kCGWindowOwnerPID"] as? Int, pid == ourPID {
                 itemVisible = true
                 barVisible = true
+                ourRight = max(ourRight ?? 0, CGFloat(x + width))
                 continue
             }
             if let owner = w["kCGWindowOwnerName"] as? String,
                owner == "Control Center" || owner == "ControlCenter" || owner == "SystemUIServer" {
                 barVisible = true
             }
-            leftmostForeign = min(leftmostForeign, CGFloat(x))
+            if CGFloat(x) >= regionStart { leftmostForeign = min(leftmostForeign, CGFloat(x)) }
         }
         guard barVisible else { return nil }
-        return (itemVisible, leftmostForeign)
+
+        // Drawn: our own right edge bounds the slot we can grow into. Hidden: the nearest
+        // item that took the space we'd occupy.
+        let edge = ourRight ?? min(leftmostForeign, screenRight)
+        return (itemVisible, edge)
     }
 
     /// The label ladder. Your focused time today plus the live session %; when the bar
     /// runs out of room we tighten the spelling before giving anything up, because the
     /// percentage is worth more than the punctuation between them.
-    ///   0  " 4h 12m · 92%"    1  " 4h12m 92%"    2  " 4h 12m"    3  icon only
+    ///   0  ◍ " 4h 12m · 92%"   1  ◍ " 4h12m 92%"   2  "4h12m 92%" (no icon — the ring
+    ///   costs ~26pt, more than the percentage does)   3  ◍ " 4h 12m"   4  icon only
     private func menuBarLabel(level: Int) -> String {
         let time = tracker.today.humanTotal.hoursCompact
         let pct = UsageManager.shared.connected ? UsageManager.shared.session?.percent : nil
+        let tight = time.replacingOccurrences(of: " ", with: "")
         switch level {
         case 0:
             guard let p = pct else { return " " + time }
             return " \(time) · \(Int(p))%"
         case 1:
             guard let p = pct else { return " " + time }
-            return " \(time.replacingOccurrences(of: " ", with: "")) \(Int(p))%"
+            return " \(tight) \(Int(p))%"
         case 2:
+            guard let p = pct else { return " " + time }
+            return "\(tight) \(Int(p))%"
+        case 3:
             return " " + time
         default:
             return ""
         }
     }
 
+    /// Level 2 drops the ring so the numbers survive — only offered to people who asked
+    /// for that trade in Settings.
+    private func levelHidesIcon(_ level: Int) -> Bool { level == 2 && tracker.preferPercentOverIcon }
+
     /// The richest label the user actually asked for — the ceiling fitLevel trims below.
     private var configuredLevel: Int {
         switch tracker.menuBarStyle {
         case .full: return 0
-        case .timeOnly: return 2
-        case .iconOnly: return 3
+        case .timeOnly: return 3
+        case .iconOnly: return 4
         }
     }
 
+    /// Roughly what the ring image plus its spacing adds to the item.
+    private let iconAllowance: CGFloat = 26
+
+    private func labelWidth(_ s: String) -> CGFloat {
+        let font = statusItem.button?.font ?? NSFont.menuBarFont(ofSize: 0)
+        return (s as NSString).size(withAttributes: [.font: font]).width
+    }
+
     private func preferredLabelWidth() -> CGFloat {
-        guard let button = statusItem.button else { return 0 }
-        let font = button.font ?? NSFont.menuBarFont(ofSize: 0)
-        return (menuBarLabel(level: configuredLevel) as NSString)
-            .size(withAttributes: [.font: font]).width
+        labelWidth(menuBarLabel(level: configuredLevel))
     }
 
     /// Room our item can occupy: everything from the start of the usable region up to
     /// the neighbour it butts against. macOS lays items out right-to-left, so this is
     /// the number that decides whether we get drawn at all.
     private func availableWidth(neighbourEdge: CGFloat) -> CGFloat {
-        let regionStart = NSScreen.main?.auxiliaryTopRightArea?.minX ?? 0
+        let regionStart = barScreen?.auxiliaryTopRightArea?.minX ?? barScreen?.frame.minX ?? 0
         return neighbourEdge - regionStart
     }
 
@@ -189,14 +232,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var fitLevel = 0
     private var lastFitCheck = Date.distantPast
     private var lastFitCrumb = ""
+    private var itemCreatedAt = Date.distantPast
+    private var missStreak = 0
     /// What the bar looked like when the label last failed to fit.
     private var failedLabelWidth: CGFloat?
     private var failedAvailableWidth: CGFloat?
 
     private func makeStatusItem() {
+        itemCreatedAt = Date()      // macOS needs a moment to place it; don't judge before then
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.autosaveName = "LockedIn"   // macOS keys the item's position on this
         statusItem.button?.imagePosition = .imageLeading
+        statusItem.button?.imageHugsTitle = true   // reclaims the padding between ring and label
         statusItem.button?.action = #selector(togglePopover)
         statusItem.button?.target = self
         // Left-click = popover, right-click = quick menu (the Stats/Ice pattern).
@@ -232,10 +279,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// far too expensive to run on every tracker tick.
     private func checkStatusItemFit() {
         guard Date().timeIntervalSince(lastFitCheck) >= 8 else { return }
+        // A freshly created item isn't in the window list for a second or two; judging it
+        // that early reads as "hidden" and shrinks a label that had room all along.
+        guard Date().timeIntervalSince(itemCreatedAt) >= 6 else { return }
         lastFitCheck = Date()
 
         guard let state = statusItemOnScreen() else { return }   // bar hidden — no signal
-        let crumb = "level=\(fitLevel) onScreen=\(state.onScreen) title=\(statusItem.button?.title ?? "-")"
+        let crumb = "level=\(fitLevel) onScreen=\(state.onScreen) "
+            + "avail=\(Int(availableWidth(neighbourEdge: state.neighbourEdge))) "
+            + "failedAvail=\(failedAvailableWidth.map { String(Int($0)) } ?? "-") "
+            + "failedLabel=\(failedLabelWidth.map { String(Int($0)) } ?? "-") "
+            + "want=\(Int(preferredLabelWidth())) title=\(statusItem.button?.title ?? "-")"
         if crumb != lastFitCrumb {
             lastFitCrumb = crumb
             UserDefaults.standard.set(crumb, forKey: "menubar.debug.fit")
@@ -244,6 +298,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if state.onScreen {
             notchHiddenStreak = 0
             notchRescueAttempts = 0
+            missStreak = 0
             if fitLevel > 0, worthRetryingFullLabel(neighbourEdge: state.neighbourEdge) {
                 fitLevel -= 1
                 failedLabelWidth = nil
@@ -253,9 +308,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
+        // One miss can just be a transient re-layout; act on the second in a row.
+        missStreak += 1
+        guard missStreak >= 2 else { return }
+        missStreak = 0
+
         // Shrink first: a narrower item is the only thing that actually wins back space.
-        if fitLevel < 3 {
-            fitLevel += 1
+        if fitLevel < 4 {
+            // Step to the next level that is genuinely narrower — with no usage % to show,
+            // "full" and "compact" render identically and stepping through them is a no-op
+            // that costs the user their time display for nothing.
+            let current = labelWidth(menuBarLabel(level: max(configuredLevel, fitLevel)))
+                + (levelHidesIcon(max(configuredLevel, fitLevel)) ? 0 : iconAllowance)
+            var next = fitLevel
+            while next < 4 {
+                next += 1
+                let lvl = max(configuredLevel, next)
+                // The icon-less rung only exists for people who'd rather lose the ring
+                // than the percentage; otherwise step straight past it.
+                if levelHidesIcon(lvl), !tracker.preferPercentOverIcon { continue }
+                let w = labelWidth(menuBarLabel(level: lvl)) + (levelHidesIcon(lvl) ? 0 : iconAllowance)
+                if w < current - 1 { break }
+            }
+            fitLevel = next
             failedLabelWidth = preferredLabelWidth()
             failedAvailableWidth = availableWidth(neighbourEdge: state.neighbourEdge)
             refreshStatusItem()
@@ -307,7 +382,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let active = tracker.humanActiveNow || !tracker.activeSessions.isEmpty
             button.image = Self.ringImage(progress: pct / 100, dimmed: !active)
         }
-        button.title = menuBarLabel(level: max(configuredLevel, fitLevel))
+        var level = max(configuredLevel, fitLevel)
+        if level == 2, !tracker.preferPercentOverIcon { level = 3 }   // keep the ring instead
+        if levelHidesIcon(level) { button.image = nil }
+        button.title = menuBarLabel(level: level)
     }
 
     private func symbol(_ name: String) -> NSImage? {
