@@ -48,12 +48,20 @@ brew install --cask --no-quarantine itspavel/tap/lockedin
 ```
 
 Or **[download the DMG](https://landing-zeta-coral.vercel.app/download)** (also on
-[GitHub Releases](https://github.com/itspavel/lockedin/releases)) and drag to
-Applications. Beta builds are unsigned until the project justifies the $99/yr
-Developer ID, so the DMG route needs a one-time unblock: on macOS 15 open the app
-once, then **System Settings → Privacy & Security → Open Anyway**; on macOS 13–14
-right-click → Open. Or clear the flag:
-`xattr -dr com.apple.quarantine /Applications/LockedIn.app`.
+[GitHub Releases](https://github.com/itspavel/lockedin/releases)) and drag to Applications.
+
+> [!IMPORTANT]
+> **"Apple could not verify LockedIn is free of malware"?** Expected for a
+> browser-downloaded beta — the build isn't Developer-ID notarized yet (the $99/yr is
+> on the list). It's a Gatekeeper policy block, **not** a permissions one, so running
+> as administrator won't help. Fastest fix — clear the quarantine flag macOS added on
+> download:
+> ```sh
+> xattr -dr com.apple.quarantine /Applications/LockedIn.app
+> ```
+> Or **System Settings → Privacy & Security → Open Anyway** (macOS 15), then open once
+> more. The `curl … | sh` command above sidesteps all of this — curl downloads carry no
+> quarantine flag.
 
 Or build from source in ~30 seconds (see below). Updates surface in-app: the menu-bar
 popover shows an "Update available" banner with release notes.
