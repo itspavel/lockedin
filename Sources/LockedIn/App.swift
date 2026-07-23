@@ -164,6 +164,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let time = tracker.today.humanTotal.hoursCompact
         let pct = UsageManager.shared.connected ? UsageManager.shared.session?.percent : nil
         let tight = time.replacingOccurrences(of: " ", with: "")
+        // "% only" style: one number at every rung, icon-only when even that won't fit
+        // (or when there's no session % to show — reconnect lives in the popover).
+        if tracker.menuBarStyle == .percentOnly {
+            guard level < 4, let p = pct else { return "" }
+            return " \(Int(p))%"
+        }
         switch level {
         case 0:
             guard let p = pct else { return " " + time }
@@ -189,6 +195,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var configuredLevel: Int {
         switch tracker.menuBarStyle {
         case .full: return 0
+        case .percentOnly: return 0   // its own label set; the ladder still degrades to icon-only
         case .timeOnly: return 3
         case .iconOnly: return 4
         }
@@ -218,10 +225,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// the bar's contents shifted (an app quit, a Space switched), or the label itself
     /// got shorter than the one that didn't fit (a new day, a smaller percentage).
     /// A plain timer here makes the item vanish for a few seconds on every retry.
-    private func worthRetryingFullLabel(neighbourEdge: CGFloat) -> Bool {
-        if let room = failedAvailableWidth, availableWidth(neighbourEdge: neighbourEdge) > room + 4 { return true }
-        if let w = failedLabelWidth, preferredLabelWidth() < w - 4 { return true }
-        return false
+    /// Whether the next rung up should fit. With a recorded failure, demand the situation
+    /// actually changed since (more room, or a shorter label). Right after a successful climb
+    /// the baselines are cleared — measure the target directly instead of freezing, which is
+    /// the bug that kept the item on time-only all day with 30pt to spare: the ladder could
+    /// only ever climb one rung per shrink, because rule and record erased each other.
+    private func worthGrowingBack(to target: Int, neighbourEdge: CGFloat) -> Bool {
+        let avail = availableWidth(neighbourEdge: neighbourEdge)
+        if let room = failedAvailableWidth, let w = failedLabelWidth {
+            return avail > room + 4 || preferredLabelWidth() < w - 4
+        }
+        let lvl = max(configuredLevel, target)
+        let needed = labelWidth(menuBarLabel(level: lvl)) + (levelHidesIcon(lvl) ? 0 : iconAllowance)
+        return needed <= avail - 6
     }
 
     private var notchNotified = false
@@ -299,11 +315,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             notchHiddenStreak = 0
             notchRescueAttempts = 0
             missStreak = 0
-            if fitLevel > 0, worthRetryingFullLabel(neighbourEdge: state.neighbourEdge) {
-                fitLevel -= 1
-                failedLabelWidth = nil
-                failedAvailableWidth = nil
-                refreshStatusItem()
+            if fitLevel > 0 {
+                // Next rung up, skipping the icon-less rung for people who didn't opt into it.
+                var target = fitLevel - 1
+                if target == 2, !tracker.preferPercentOverIcon { target = 1 }
+                if worthGrowingBack(to: target, neighbourEdge: state.neighbourEdge) {
+                    fitLevel = target
+                    failedLabelWidth = nil
+                    failedAvailableWidth = nil
+                    refreshStatusItem()
+                }
             }
             return
         }

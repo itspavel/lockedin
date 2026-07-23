@@ -164,11 +164,12 @@ struct ProjectAggregate: Identifiable, Sendable {
 /// How much the menu-bar item shows. Narrow options exist because macOS hides menu-bar
 /// items that fall under the notch when the bar is crowded.
 enum MenuBarStyle: String, CaseIterable, Identifiable {
-    case full, timeOnly, iconOnly
+    case full, percentOnly, timeOnly, iconOnly
     var id: String { rawValue }
     var label: String {
         switch self {
         case .full: "Time + limit %"
+        case .percentOnly: "Limit % only"
         case .timeOnly: "Time only"
         case .iconOnly: "Icon only"
         }
